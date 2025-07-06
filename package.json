@@ -1,0 +1,26 @@
+{
+  "name": "send-to-kindle",
+  "version": "1.0.0",
+  "description": "Send documents to Kindle",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.7.3",
+    "turbo": "^1.13.3",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
