@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Node.js monorepo using TypeScript with workspaces. The main package is `article-fetcher` in `packages/article-fetcher/`.
 
+### article-fetcher Package
+
+The `article-fetcher` package extracts content from web articles. It parses HTML to extract titles, metadata (author, publication date), and main content while filtering out navigation, sidebars, and other unwanted elements.
+
 ## Development Commands
 
 - `npm run build` - Build all packages using Turbo
