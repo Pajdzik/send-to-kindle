@@ -1,0 +1,134 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Serializability</title>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, target-densitydpi=device-dpi">
+    <link rel="stylesheet" type="text/css" href="/css/base.css">
+    <link rel="stylesheet" type="text/css" href="/css/grid.css">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-B63PCPTL0V"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-B63PCPTL0V');
+    </script>
+  </head>
+
+  <body>
+    <div class="main">
+      <div class="bar">
+        <h1><a href="/">JEPSEN</a></h1>
+      </div>
+
+      <div id="nav"><nav><a href="/blog" class="">Blog</a><a href="/analyses" class="">Analyses</a><a href="/talks" class="">Talks</a><a href="/consistency" class="selected">Consistency</a><a href="/services" class="">Services</a></nav><nav><a href="/consistency/models" class="selected">Models</a><a href="/consistency/phenomena" class="">Phenomena</a><a href="/consistency/dependencies" class="">Dependencies</a></nav></div>
+
+      <h1 class="title">Serializability</h1>
+
+      <div class="content"><div class="section group" markdown="1">
+<div class="col span_12_of_12">
+<p>Informally, serializability means that transactions appear to have occurred in
+some total order.</p>
+<p>Serializability is a <em>transactional</em> model: operations (usually termed
+“transactions”) can involve several primitive sub-operations performed in
+order. Serializability guarantees that operations take place
+<em>atomically</em>: a transaction’s sub-operations do not appear to interleave with
+sub-operations from other transactions.</p>
+<p>It is also a <em>multi-object</em> property: operations can act on multiple objects in
+the system. Indeed, serializability applies not only to the <em>particular</em>
+objects involved in a transaction, but to <em>the system as a whole</em>—operations
+may act on predicates, like “the set of all cats”.</p>
+<p>Serializability cannot be totally or sticky available; in the event of a
+network partition, some or all nodes will be unable to make progress.</p>
+<p>Serializability implies <a href="repeatable-read">repeatable read</a>, <a href="snapshot-isolation">snapshot isolation</a>, etc. However, it does not impose any real-time, or even per-process constraints. If process A completes write <em>w</em>, then process B begins a read <em>r</em>, <em>r</em> is not necessarily guaranteed to observe <em>w</em>. For those kinds of real-time guarantees, see <a href="strict-serializable">strict serializable</a>.</p>
+<p>Moreover, serializability does not require a per-process order between
+transactions. A process can observe a write, then <em>fail</em> to observe that same
+write in a subsequent transaction. In fact, a process can fail to observe its
+own prior writes, if those writes occurred in different transactions.</p>
+<p>The requirement for a total order of transactions is strong—but still allows
+pathological orderings. For instance, a serializable database can always return
+the empty state for any reads, by appearing to execute those reads at time 0.
+It can also discard write-only transactions by reordering them to execute at
+the very <em>end</em> of the history, after any reads. Operations like increments can
+also be discarded, assuming the result of the increment is never observed.
+Luckily, most implementations don’t seem to take advantage of these
+optimization opportunities.</p>
+<h2><a href="#formally" id="formally">Formally</a></h2>
+<p>The <a href="http://web.cecs.pdx.edu/~len/sql1999.pdf">ANSI SQL 1999 spec</a> says:</p>
+<blockquote>
+<p>The execution of concurrent SQL-transactions at isolation level SERIALIZABLE
+is guaranteed to be serializable. A serializable execution is defined to be
+an execution of the operations of concurrently executing SQL-transactions
+that produces the same effect as some serial execution of those same
+SQL-transactions. A serial execution is one in which each SQL-transaction
+executes to completion before the next SQL-transaction begins.</p>
+</blockquote>
+<p>… and goes on to define its isolation levels in terms of proscribed
+anomalies: serializable is <a href="read-committed">read committed</a>, but without phenomenon P3:</p>
+<blockquote>
+<p>P3 (“Phantom”): SQL-transaction T1 reads the set of rows N that satisfy some
+&lt;search condition&gt;. SQL-transaction T2 then executes SQL-statements that
+generate one or more rows that satisfy the &lt;search condition&gt; used by
+SQL-transaction T1. If SQL-transaction T1 then repeats the initial read with
+the same &lt;search condition&gt;, it obtains a different collection of rows.</p>
+</blockquote>
+<p>However, as <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-95-51.pdf">Berenson, Bernstein, et al
+observed</a>,
+the ANSI specification allows multiple intepretations, and one of those
+interpretations (the “anomaly interpretation”) admits nonserializable histories.</p>
+<p><a href="http://pmg.csail.mit.edu/papers/adya-phd.pdf">Adya’s formalization of transactional isolation
+levels</a> provides a more thorough
+summary of the preventative interpretation of the ANSI levels, defining
+serializability as the absence of four phenomena. Serializability prohibits:</p>
+<ul>
+<li>P0 (Dirty Write): w<sub>1</sub>(x) … w<sub>2</sub>(x)</li>
+<li>P1 (Dirty Read):  w<sub>1</sub>(x) … r<sub>2</sub>(x)</li>
+<li>P2 (Fuzzy Read):  r<sub>1</sub>(x) … w<sub>2</sub>(x)</li>
+<li>P3 (Phantom):     r<sub>1</sub>(P) … w<sub>2</sub>(y in P)</li>
+</ul>
+<p>Here <em>w</em> denotes a write, <em>r</em> denotes a read, and subscripts indicate the
+transaction which executed that operation. The notation “…” indicates a
+series of micro-operations <em>except</em> for a commit or abort. P indicates a
+predicate.</p>
+<p>As Adya notes, the preventative interpretation of the ANSI specification is
+<em>overly restrictive</em>: it rules out some histories which are legally
+serializable.</p>
+<p>For a reasonably intuitive formalization based on abstract executions, see
+Cerone, Bernardi, &amp; Gotsman’s <a href="http://drops.dagstuhl.de/opus/volltexte/2015/5375/pdf/15.pdf">A Framework for Transactional Consistency Models
+with Atomic
+Visibility</a>,
+which specifies serializability as a combination of three properties:</p>
+<ul>
+<li>Internal consistency: within a transaction, reads observe that transaction’s
+most recent writes (if any)</li>
+<li>External consistency: reads <em>without</em> a preceding write in transaction T<sub>1</sub>
+must observe the state written by a transaction T<sub>0</sub>, such that T<sub>0</sub> is
+visible to T<sub>1</sub>, and no more recent transaction wrote to that object.</li>
+<li>Total visibility: the visibility relationship must be a <em>total</em> order.</li>
+</ul>
+<p>For a state-based formalization, see Crooks, Pu, Alvisi, &amp; Clement: <a href="https://apps.cs.utexas.edu/apps/sites/default/files/tech_reports/paper_extendedtr.pdf">Seeing is Believing: A Client-Centric Specification of Database Isolation</a>.</p>
+</div>
+</div>
+</div>
+
+      <div class="footer">
+        <p>Copyright © Jepsen, LLC.</p>
+        <p>We do our best to provide accurate information, but if you see a
+        mistake, please <a href="mailto:errata@jepsen.io">let us know</a>.</p>
+      </div>
+    </div>
+
+    <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-9527251-3', 'auto');
+    ga('send', 'pageview');
+    </script>
+  
+
+</body></html>
