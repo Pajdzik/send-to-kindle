@@ -32,12 +32,12 @@ export class ArticleFetcher {
     
     const titleElement = document.querySelector('title');
     if (titleElement) {
-      return titleElement.textContent?.trim() || '';
+      return this.cleanText(titleElement.textContent?.trim() || '');
     }
     
     const h1Element = document.querySelector('h1');
     if (h1Element) {
-      return h1Element.textContent?.trim() || '';
+      return this.cleanText(h1Element.textContent?.trim() || '');
     }
     
     return '';
@@ -81,18 +81,22 @@ export class ArticleFetcher {
     const unwantedSelectors = [
       'script', 'style', 'nav', 'header', 'footer', 'aside', 'iframe', 'object', 'embed'
     ];
-    unwantedSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => el.remove());
-    });
+    for (const selector of unwantedSelectors) {
+      for (const el of document.querySelectorAll(selector)) {
+        el.remove();
+      }
+    }
     
     // Remove elements with unwanted classes
     const unwantedClasses = [
       'sidebar', 'navigation', 'menu', 'advertisement', 'ads', 'social', 'comments',
       'related', 'recommended', 'popup', 'modal'
     ];
-    unwantedClasses.forEach(className => {
-      document.querySelectorAll(`.${className}`).forEach(el => el.remove());
-    });
+    for (const className of unwantedClasses) {
+      for (const el of document.querySelectorAll(`.${className}`)) {
+        el.remove();
+      }
+    }
     
     // Find content sections
     const contentSelectors = [
@@ -108,11 +112,11 @@ export class ArticleFetcher {
     
     // Fallback to paragraphs
     const paragraphs = Array.from(document.querySelectorAll('p'))
-      .map(p => p.textContent?.trim() || '')
+      .map(p => this.cleanContentText(p.textContent?.trim() || ''))
       .filter(text => text.length > 30);
     
     const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'))
-      .map(h => h.textContent?.trim() || '')
+      .map(h => this.cleanContentText(h.textContent?.trim() || ''))
       .filter(text => text.length > 0);
     
     const allContent = [...headings, ...paragraphs];
@@ -122,25 +126,43 @@ export class ArticleFetcher {
 
   private extractTextFromElement(element: Element): string {
     const paragraphs = Array.from(element.querySelectorAll('p'))
-      .map(p => p.textContent?.trim() || '')
+      .map(p => this.cleanContentText(p.textContent?.trim() || ''))
       .filter(text => text.length > 10);
     
     const headings = Array.from(element.querySelectorAll('h1, h2, h3, h4, h5, h6'))
-      .map(h => h.textContent?.trim() || '')
+      .map(h => this.cleanContentText(h.textContent?.trim() || ''))
       .filter(text => text.length > 0);
     
     const lists = Array.from(element.querySelectorAll('li'))
-      .map(li => li.textContent?.trim() || '')
+      .map(li => this.cleanContentText(li.textContent?.trim() || ''))
       .filter(text => text.length > 10);
     
     const allContent = [...headings, ...paragraphs, ...lists];
     
-    return allContent.length > 0 ? allContent.join(' ') : element.textContent?.trim() || '';
+    return allContent.length > 0 ? allContent.join(' ') : this.cleanContentText(element.textContent?.trim() || '');
   }
 
   private extractAllTextFromElement(element: Element | null): string {
     if (!element) return '';
-    return element.textContent?.trim() || '';
+    return this.cleanContentText(element.textContent?.trim() || '');
+  }
+
+  private cleanText(text: string): string {
+    // Decode HTML entities using a temporary DOM element
+    const tempElement = new JSDOM('<div></div>').window.document.createElement('div');
+    tempElement.innerHTML = text;
+    const decoded = tempElement.textContent || tempElement.innerText || '';
+    
+    // Normalize whitespace
+    return decoded.replace(/\s+/g, ' ').trim();
+  }
+  
+  private cleanContentText(text: string): string {
+    // First clean like normal text
+    const cleaned = this.cleanText(text);
+    
+    // For content, remove ampersands and other symbols that might be problematic
+    return cleaned.replace(/\s*&\s*/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
 

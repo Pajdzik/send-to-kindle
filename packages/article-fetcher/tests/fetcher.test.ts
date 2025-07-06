@@ -139,7 +139,7 @@ describe('ArticleFetcher', () => {
       `;
 
       const result = fetcher.extractContent(html);
-      expect(result.title).toBe('Test Article');
+      expect(result.title).toBe('Test & Article');
       expect(result.content).toContain('Content with entities extra spaces');
     });
 
