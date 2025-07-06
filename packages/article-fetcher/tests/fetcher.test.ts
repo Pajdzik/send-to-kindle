@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ArticleFetcher } from './fetcher.js';
+import { ArticleFetcher } from '../src/fetcher.js';
 
 describe('ArticleFetcher', () => {
   const fetcher = new ArticleFetcher();

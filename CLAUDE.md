@@ -42,5 +42,5 @@ Within each package directory (e.g., `packages/article-fetcher/`):
 - All packages use ESM modules (`"type": "module"`)
 - TypeScript configured with strict mode and modern target (ES2022)
 - Composite builds enabled for fast incremental compilation
-- Test files use `.test.ts` or `.spec.ts` extensions
+- Test files use `.test.ts` extensions and are located in separate `tests/` directories within each package
 - Import statements use `.js` extensions for proper ESM resolution
