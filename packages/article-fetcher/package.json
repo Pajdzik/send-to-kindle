@@ -12,7 +12,9 @@
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "effect": "^3.16.12"
+  },
   "devDependencies": {
     "typescript": "^5.4.5",
     "vitest": "^1.6.0"
