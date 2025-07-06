@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "effect": "^3.16.12"
+    "@types/jsdom": "^21.1.7",
+    "effect": "^3.16.12",
+    "jsdom": "^26.1.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
