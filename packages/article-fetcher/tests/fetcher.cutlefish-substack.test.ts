@@ -15,7 +15,9 @@ describe('Cutlefish Substack Article Test', () => {
     const result = fetcher.extractContent(html);
 
     // Test basic metadata extraction
-    expect(result.title).toBe('TBM 293: Where More Effective Product Teams Spend More (and Less) Time');
+    expect(result.title).toBe(
+      'TBM 293: Where More Effective Product Teams Spend More (and Less) Time',
+    );
     expect(result.author).toBe('John Cutler');
     // Substack doesn't use standard meta tags for dates, so this will be undefined
     expect(result.publishedDate).toBeUndefined();
