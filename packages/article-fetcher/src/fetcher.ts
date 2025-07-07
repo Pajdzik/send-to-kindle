@@ -1,13 +1,13 @@
 import { JSDOM } from 'jsdom';
+import { Effect, pipe, Option, Array as EffectArray } from 'effect';
 
 export interface ArticleContent {
-  title: string;
-  content: string;
-  author?: string;
-  publishedDate?: string;
+  readonly title: string;
+  readonly content: string;
+  readonly author?: string;
+  readonly publishedDate?: string;
 }
 
-// Constants for better maintainability
 const UNWANTED_SELECTORS = [
   'script',
   'style',
@@ -61,176 +61,270 @@ const DATE_SELECTORS = [
 const MIN_PARAGRAPH_LENGTH = 30;
 const MIN_LIST_ITEM_LENGTH = 10;
 
+type DOMDocument = Document;
+type DOMElement = Element;
+
+interface ExtractedMetadata {
+  readonly author: Option.Option<string>;
+  readonly publishedDate: Option.Option<string>;
+}
+
+const validateHtml = (html: string): Effect.Effect<string, Error> =>
+  Effect.gen(function* () {
+    if (typeof html !== 'string') {
+      yield* Effect.fail(new Error('Invalid HTML input: must be a string'));
+    }
+    return html;
+  });
+
+const createDocument = (html: string): Effect.Effect<DOMDocument, Error> =>
+  Effect.try(() => new JSDOM(html).window.document);
+
+const extractContent = (html: string): Effect.Effect<ArticleContent, Error> =>
+  pipe(
+    validateHtml(html),
+    Effect.flatMap((validHtml) => {
+      if (!validHtml.trim()) {
+        return Effect.succeed({
+          title: '',
+          content: '',
+          author: undefined,
+          publishedDate: undefined,
+        });
+      }
+      return pipe(
+        createDocument(validHtml),
+        Effect.flatMap((document) =>
+          Effect.all({
+            title: extractTitle(document),
+            metadata: extractMetadata(document),
+            content: extractMainContent(document),
+          }),
+        ),
+        Effect.map(({ title, metadata, content }) => ({
+          title,
+          content,
+          author: Option.getOrUndefined(metadata.author),
+          publishedDate: Option.getOrUndefined(metadata.publishedDate),
+        })),
+      );
+    }),
+  );
+
+const extractTitle = (document: DOMDocument): Effect.Effect<string, never> =>
+  pipe(
+    Option.fromNullable(document.querySelector('title')),
+    Option.map((element) => element.textContent?.trim() || ''),
+    Option.filter((text) => text.length > 0),
+    Option.orElse(() =>
+      pipe(
+        Option.fromNullable(document.querySelector('h1')),
+        Option.map((element) => element.textContent?.trim() || ''),
+        Option.filter((text) => text.length > 0),
+      ),
+    ),
+    Option.getOrElse(() => ''),
+    cleanText,
+    Effect.succeed,
+  );
+
+const extractMetadata = (
+  document: DOMDocument,
+): Effect.Effect<ExtractedMetadata, never> =>
+  Effect.all({
+    author: extractMetaContent(document, AUTHOR_SELECTORS),
+    publishedDate: extractMetaContent(document, DATE_SELECTORS),
+  });
+
+const extractMetaContent = (
+  document: DOMDocument,
+  selectors: readonly string[],
+): Effect.Effect<Option.Option<string>, never> =>
+  pipe(
+    EffectArray.fromIterable(selectors),
+    EffectArray.map((selector: string) =>
+      pipe(
+        Option.fromNullable(document.querySelector(selector)),
+        Option.flatMap((element) =>
+          Option.fromNullable(element.getAttribute('content')),
+        ),
+        Option.map((content: string) => content.trim()),
+        Option.filter((content: string) => content.length > 0),
+      ),
+    ),
+    EffectArray.findFirst(Option.isSome),
+    Option.flatten,
+    Effect.succeed,
+  );
+
+const extractMainContent = (
+  document: DOMDocument,
+): Effect.Effect<string, never> =>
+  pipe(
+    removeUnwantedElements(document),
+    Effect.flatMap(() => findContentBySelectors(document, CONTENT_SELECTORS)),
+    Effect.flatMap((contentOpt) =>
+      Option.isSome(contentOpt)
+        ? Effect.succeed(contentOpt.value)
+        : extractContentFallback(document),
+    ),
+  );
+
+const findContentBySelectors = (
+  document: DOMDocument,
+  selectors: readonly string[],
+): Effect.Effect<Option.Option<string>, never> =>
+  pipe(
+    EffectArray.fromIterable(selectors),
+    EffectArray.map((selector: string) =>
+      pipe(
+        Option.fromNullable(document.querySelector(selector)),
+        Option.map(extractTextFromElement),
+      ),
+    ),
+    EffectArray.findFirst(Option.isSome),
+    Option.flatten,
+    Effect.succeed,
+  );
+
+const extractContentFallback = (
+  document: DOMDocument,
+): Effect.Effect<string, never> =>
+  pipe(
+    Effect.all({
+      paragraphs: extractElementsText(document, 'p', MIN_PARAGRAPH_LENGTH),
+      headings: extractElementsText(document, 'h1, h2, h3, h4, h5, h6', 0),
+    }),
+    Effect.map(({ paragraphs, headings }) => {
+      const allContent = [...headings, ...paragraphs];
+      return allContent.length > 0
+        ? allContent.join(' ')
+        : extractAllTextFromElement(document.body);
+    }),
+  );
+
+const extractElementsText = (
+  document: DOMDocument,
+  selector: string,
+  minLength: number,
+): Effect.Effect<ReadonlyArray<string>, never> =>
+  pipe(
+    EffectArray.fromIterable(document.querySelectorAll(selector)),
+    EffectArray.map((element: Element) => element.textContent?.trim() || ''),
+    EffectArray.map(cleanContentText),
+    EffectArray.filter((text: string) => text.length > minLength),
+    Effect.succeed,
+  );
+
+const removeUnwantedElements = (
+  document: DOMDocument,
+): Effect.Effect<void, never> =>
+  pipe(
+    Effect.all([
+      removeElementsBySelectors(document, UNWANTED_SELECTORS),
+      removeElementsByClasses(document, UNWANTED_CLASSES),
+    ]),
+    Effect.map(() => void 0),
+  );
+
+const removeElementsBySelectors = (
+  document: DOMDocument,
+  selectors: readonly string[],
+): Effect.Effect<void, never> =>
+  pipe(
+    EffectArray.fromIterable(selectors),
+    EffectArray.map((selector: string) =>
+      pipe(
+        EffectArray.fromIterable(document.querySelectorAll(selector)),
+        EffectArray.map((element: Element) => element.remove()),
+      ),
+    ),
+    Effect.succeed,
+    Effect.map(() => void 0),
+  );
+
+const removeElementsByClasses = (
+  document: DOMDocument,
+  classes: readonly string[],
+): Effect.Effect<void, never> =>
+  pipe(
+    EffectArray.fromIterable(classes),
+    EffectArray.map((className: string) =>
+      pipe(
+        EffectArray.fromIterable(document.querySelectorAll(`.${className}`)),
+        EffectArray.map((element: Element) => element.remove()),
+      ),
+    ),
+    Effect.succeed,
+    Effect.map(() => void 0),
+  );
+
+const extractTextFromElement = (element: DOMElement): string => {
+  const paragraphs = pipe(
+    EffectArray.fromIterable(element.querySelectorAll('p')),
+    EffectArray.map((p: Element) => p.textContent?.trim() || ''),
+    EffectArray.map(cleanContentText),
+    EffectArray.filter((text: string) => text.length > MIN_LIST_ITEM_LENGTH),
+  );
+
+  const headings = pipe(
+    EffectArray.fromIterable(
+      element.querySelectorAll('h1, h2, h3, h4, h5, h6'),
+    ),
+    EffectArray.map((h: Element) => h.textContent?.trim() || ''),
+    EffectArray.map(cleanContentText),
+    EffectArray.filter((text: string) => text.length > 0),
+  );
+
+  const lists = pipe(
+    EffectArray.fromIterable(element.querySelectorAll('li')),
+    EffectArray.map((li: Element) => li.textContent?.trim() || ''),
+    EffectArray.map(cleanContentText),
+    EffectArray.filter((text: string) => text.length > MIN_LIST_ITEM_LENGTH),
+  );
+
+  const allContent = [...headings, ...paragraphs, ...lists];
+
+  return allContent.length > 0
+    ? allContent.join(' ')
+    : cleanContentText(element.textContent?.trim() || '');
+};
+
+const extractAllTextFromElement = (element: DOMElement | null): string =>
+  pipe(
+    Option.fromNullable(element),
+    Option.map((el) => el.textContent?.trim() || ''),
+    Option.map(cleanContentText),
+    Option.getOrElse(() => ''),
+  );
+
+const cleanText = (text: string): string => {
+  const tempElement = new JSDOM('<div></div>').window.document.createElement(
+    'div',
+  );
+  tempElement.innerHTML = text;
+  const decoded = tempElement.textContent || tempElement.innerText || '';
+  return decoded.replace(/\s+/g, ' ').trim();
+};
+
+const cleanContentText = (text: string): string =>
+  pipe(cleanText(text), (cleaned) =>
+    cleaned
+      .replace(/\s*&\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+
 export class ArticleFetcher {
   async fetchArticle(_url: string): Promise<string> {
-    // TODO: Implement article fetching logic
     throw new Error('Not implemented');
   }
 
   extractContent(html: string): ArticleContent {
-    if (typeof html !== 'string') {
-      throw new Error('Invalid HTML input: must be a string');
-    }
-
-    // Handle empty HTML gracefully
-    if (!html.trim()) {
-      return {
-        title: '',
-        content: '',
-        author: undefined,
-        publishedDate: undefined,
-      };
-    }
-
-    // Create DOM once and reuse
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
-
-    const title = this.extractTitle(document);
-    const metadata = this.extractMetadata(document);
-    const content = this.extractMainContent(document);
-
-    return {
-      title,
-      content,
-      author: metadata.author,
-      publishedDate: metadata.publishedDate,
-    };
-  }
-
-  private extractTitle(document: Document): string {
-    const titleElement = document.querySelector('title');
-    if (titleElement) {
-      return this.cleanText(titleElement.textContent?.trim() || '');
-    }
-
-    const h1Element = document.querySelector('h1');
-    if (h1Element) {
-      return this.cleanText(h1Element.textContent?.trim() || '');
-    }
-
-    return '';
-  }
-
-  private extractMetadata(document: Document): {
-    author?: string;
-    publishedDate?: string;
-  } {
-    const author = this.extractMetaContent(document, AUTHOR_SELECTORS);
-    const publishedDate = this.extractMetaContent(document, DATE_SELECTORS);
-
-    return { author, publishedDate };
-  }
-
-  private extractMetaContent(
-    document: Document,
-    selectors: readonly string[],
-  ): string | undefined {
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element) {
-        const content = element.getAttribute('content');
-        if (content?.trim()) {
-          return content.trim();
-        }
-      }
-    }
-    return undefined;
-  }
-
-  private extractMainContent(document: Document): string {
-    // Remove unwanted elements
-    this.removeUnwantedElements(document);
-
-    // Find content sections
-    for (const selector of CONTENT_SELECTORS) {
-      const element = document.querySelector(selector);
-      if (element) {
-        return this.extractTextFromElement(element);
-      }
-    }
-
-    // Fallback to paragraphs
-    const paragraphs = Array.from(document.querySelectorAll('p'))
-      .map((p) => this.cleanContentText(p.textContent?.trim() || ''))
-      .filter((text) => text.length > MIN_PARAGRAPH_LENGTH);
-
-    const headings = Array.from(
-      document.querySelectorAll('h1, h2, h3, h4, h5, h6'),
-    )
-      .map((h) => this.cleanContentText(h.textContent?.trim() || ''))
-      .filter((text) => text.length > 0);
-
-    const allContent = [...headings, ...paragraphs];
-
-    return allContent.length > 0
-      ? allContent.join(' ')
-      : this.extractAllTextFromElement(document.body);
-  }
-
-  private removeUnwantedElements(document: Document): void {
-    // Remove unwanted element types
-    for (const selector of UNWANTED_SELECTORS) {
-      for (const el of document.querySelectorAll(selector)) {
-        el.remove();
-      }
-    }
-
-    // Remove elements with unwanted classes
-    for (const className of UNWANTED_CLASSES) {
-      for (const el of document.querySelectorAll(`.${className}`)) {
-        el.remove();
-      }
-    }
-  }
-
-  private extractTextFromElement(element: Element): string {
-    const paragraphs = Array.from(element.querySelectorAll('p'))
-      .map((p) => this.cleanContentText(p.textContent?.trim() || ''))
-      .filter((text) => text.length > MIN_LIST_ITEM_LENGTH);
-
-    const headings = Array.from(
-      element.querySelectorAll('h1, h2, h3, h4, h5, h6'),
-    )
-      .map((h) => this.cleanContentText(h.textContent?.trim() || ''))
-      .filter((text) => text.length > 0);
-
-    const lists = Array.from(element.querySelectorAll('li'))
-      .map((li) => this.cleanContentText(li.textContent?.trim() || ''))
-      .filter((text) => text.length > MIN_LIST_ITEM_LENGTH);
-
-    const allContent = [...headings, ...paragraphs, ...lists];
-
-    return allContent.length > 0
-      ? allContent.join(' ')
-      : this.cleanContentText(element.textContent?.trim() || '');
-  }
-
-  private extractAllTextFromElement(element: Element | null): string {
-    if (!element) return '';
-    return this.cleanContentText(element.textContent?.trim() || '');
-  }
-
-  private cleanText(text: string): string {
-    // Decode HTML entities using a temporary DOM element
-    const tempElement = new JSDOM('<div></div>').window.document.createElement(
-      'div',
-    );
-    tempElement.innerHTML = text;
-    const decoded = tempElement.textContent || tempElement.innerText || '';
-
-    // Normalize whitespace
-    return decoded.replace(/\s+/g, ' ').trim();
-  }
-
-  private cleanContentText(text: string): string {
-    // First clean like normal text
-    const cleaned = this.cleanText(text);
-
-    // For content, remove ampersands and other symbols that might be problematic
-    return cleaned
-      .replace(/\s*&\s*/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return Effect.runSync(extractContent(html));
   }
 }
+
+export const extractArticleContent = (
+  html: string,
+): Effect.Effect<ArticleContent, Error> => extractContent(html);
