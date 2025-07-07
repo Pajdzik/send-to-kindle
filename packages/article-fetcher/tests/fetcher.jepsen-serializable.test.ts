@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ArticleFetcher } from '../src/fetcher.js';
+import { extractArticleContent } from '../src/fetcher.js';
 
 describe('Jepsen Serializable Article Test', () => {
-  const fetcher = new ArticleFetcher();
 
   it('should extract content from complete jepsen.io serializable consistency article', () => {
     const html = readFileSync(
@@ -12,7 +11,7 @@ describe('Jepsen Serializable Article Test', () => {
       'utf-8',
     );
 
-    const result = fetcher.extractContent(html);
+    const result = extractArticleContent(html);
 
     // Test basic metadata extraction
     expect(result.title).toBe('Serializability');

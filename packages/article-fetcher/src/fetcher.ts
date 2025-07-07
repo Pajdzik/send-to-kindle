@@ -315,16 +315,14 @@ const cleanContentText = (text: string): string =>
       .trim(),
   );
 
-export class ArticleFetcher {
-  async fetchArticle(_url: string): Promise<string> {
-    throw new Error('Not implemented');
-  }
+export const fetchArticle = async (_url: string): Promise<string> => {
+  throw new Error('Not implemented');
+};
 
-  extractContent(html: string): ArticleContent {
-    return Effect.runSync(extractContent(html));
-  }
-}
+export const extractArticleContent = (html: string): ArticleContent => {
+  return Effect.runSync(extractContent(html));
+};
 
-export const extractArticleContent = (
+export const extractArticleContentEffect = (
   html: string,
 ): Effect.Effect<ArticleContent, Error> => extractContent(html);

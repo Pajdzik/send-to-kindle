@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ArticleFetcher } from '../src/fetcher.js';
+import { extractArticleContent } from '../src/fetcher.js';
 
 describe('Cutlefish Substack Article Test', () => {
-  const fetcher = new ArticleFetcher();
 
   it('should extract content from TBM 293 Substack article', () => {
     const html = readFileSync(
@@ -12,7 +11,7 @@ describe('Cutlefish Substack Article Test', () => {
       'utf-8',
     );
 
-    const result = fetcher.extractContent(html);
+    const result = extractArticleContent(html);
 
     // Test basic metadata extraction
     expect(result.title).toBe(

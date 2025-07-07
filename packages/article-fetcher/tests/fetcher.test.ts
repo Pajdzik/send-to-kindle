@@ -1,15 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { ArticleFetcher } from '../src/fetcher.js';
+import { fetchArticle, extractArticleContent } from '../src/fetcher.js';
 
-describe('ArticleFetcher', () => {
-  const fetcher = new ArticleFetcher();
-
-  it('should create an instance', () => {
-    expect(fetcher).toBeInstanceOf(ArticleFetcher);
-  });
-
+describe('Article Fetcher Functions', () => {
   it('should throw not implemented error', async () => {
-    await expect(fetcher.fetchArticle('https://example.com')).rejects.toThrow(
+    await expect(fetchArticle('https://example.com')).rejects.toThrow(
       'Not implemented',
     );
   });
@@ -29,7 +23,7 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.title).toBe('Test Article');
       expect(result.content).toContain('This is the main content');
       expect(result.content).toContain('This is another paragraph');
@@ -51,7 +45,7 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.author).toBe('John Doe');
       expect(result.publishedDate).toBe('2024-01-01');
     });
@@ -72,7 +66,7 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.content).toContain('Main article content');
       expect(result.content).not.toContain('Navigation content');
       expect(result.content).not.toContain('Sidebar content');
@@ -94,7 +88,7 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.content).toContain('First paragraph of content');
       expect(result.content).toContain('Second paragraph of content');
     });
@@ -112,14 +106,14 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.content).toContain('substantial content');
       expect(result.content).toContain('meaningful content');
     });
 
     it('should handle empty or malformed HTML', () => {
       const html = '';
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.title).toBe('');
       expect(result.content).toBe('');
       expect(result.author).toBeUndefined();
@@ -138,7 +132,7 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.title).toBe('Test & Article');
       expect(result.content).toContain('Content with entities extra spaces');
     });
@@ -155,7 +149,7 @@ describe('ArticleFetcher', () => {
         </html>
       `;
 
-      const result = fetcher.extractContent(html);
+      const result = extractArticleContent(html);
       expect(result.title).toBe('Main Article Heading');
     });
   });
