@@ -10,7 +10,7 @@ describe('ArticleFetcher', () => {
 
   it('should throw not implemented error', async () => {
     await expect(fetcher.fetchArticle('https://example.com')).rejects.toThrow(
-      'Not implemented'
+      'Not implemented',
     );
   });
 
