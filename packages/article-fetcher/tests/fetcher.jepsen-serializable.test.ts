@@ -5,13 +5,13 @@ import { extractArticleContent } from '../src/fetcher.js';
 
 describe('Jepsen Serializable Article Test', () => {
 
-  it('should extract content from complete jepsen.io serializable consistency article', () => {
+  it('should extract content from complete jepsen.io serializable consistency article', async () => {
     const html = readFileSync(
       join(__dirname, 'test-articles', 'jepsen.html'),
       'utf-8',
     );
 
-    const result = extractArticleContent(html);
+    const result = await extractArticleContent(html);
 
     // Test basic metadata extraction
     expect(result.title).toBe('Serializability');

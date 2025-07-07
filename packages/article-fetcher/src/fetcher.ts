@@ -315,12 +315,33 @@ const cleanContentText = (text: string): string =>
       .trim(),
   );
 
-export const fetchArticle = async (_url: string): Promise<string> => {
-  throw new Error('Not implemented');
+export const fetchArticle = async (url: string): Promise<string> => {
+  const result = await Effect.runPromise(
+    Effect.tryPromise({
+      try: async () => {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch article: ${response.status} ${response.statusText}`);
+        }
+        return response.text();
+      },
+      catch: (error) => new Error(`Network error: ${error instanceof Error ? error.message : String(error)}`),
+    })
+  );
+  return result;
 };
 
-export const extractArticleContent = (html: string): ArticleContent => {
+export const extractArticleContent = async (html: string): Promise<ArticleContent> => {
+  return Effect.runPromise(extractContent(html));
+};
+
+export const extractArticleContentSync = (html: string): ArticleContent => {
   return Effect.runSync(extractContent(html));
+};
+
+export const fetchAndExtractArticle = async (url: string): Promise<ArticleContent> => {
+  const html = await fetchArticle(url);
+  return extractArticleContent(html);
 };
 
 export const extractArticleContentEffect = (

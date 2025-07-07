@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { fetchArticle, extractArticleContent } from '../src/fetcher.js';
+import { fetchArticle, extractArticleContent, extractArticleContentSync } from '../src/fetcher.js';
 
 describe('Article Fetcher Functions', () => {
-  it('should throw not implemented error', async () => {
-    await expect(fetchArticle('https://example.com')).rejects.toThrow(
-      'Not implemented',
-    );
-  });
+  it('should handle network errors when fetching', async () => {
+    await expect(fetchArticle('https://non-existent-domain-12345.com')).rejects.toThrow();
+  }, { timeout: 10000 });
 
   describe('extractContent', () => {
-    it('should extract basic title and content', () => {
+    it('should extract basic title and content', async () => {
       const html = `
         <html>
           <head><title>Test Article</title></head>
@@ -23,13 +21,13 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.title).toBe('Test Article');
       expect(result.content).toContain('This is the main content');
       expect(result.content).toContain('This is another paragraph');
     });
 
-    it('should extract metadata from meta tags', () => {
+    it('should extract metadata from meta tags', async () => {
       const html = `
         <html>
           <head>
@@ -45,12 +43,12 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.author).toBe('John Doe');
       expect(result.publishedDate).toBe('2024-01-01');
     });
 
-    it('should remove unwanted elements', () => {
+    it('should remove unwanted elements', async () => {
       const html = `
         <html>
           <head><title>Test Article</title></head>
@@ -66,7 +64,7 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.content).toContain('Main article content');
       expect(result.content).not.toContain('Navigation content');
       expect(result.content).not.toContain('Sidebar content');
@@ -74,7 +72,7 @@ describe('Article Fetcher Functions', () => {
       expect(result.content).not.toContain('console.log');
     });
 
-    it('should handle articles without explicit article tags', () => {
+    it('should handle articles without explicit article tags', async () => {
       const html = `
         <html>
           <head><title>Test Article</title></head>
@@ -88,12 +86,12 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.content).toContain('First paragraph of content');
       expect(result.content).toContain('Second paragraph of content');
     });
 
-    it('should fallback to paragraph extraction when no content sections found', () => {
+    it('should fallback to paragraph extraction when no content sections found', async () => {
       const html = `
         <html>
           <head><title>Test Article</title></head>
@@ -106,21 +104,21 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.content).toContain('substantial content');
       expect(result.content).toContain('meaningful content');
     });
 
-    it('should handle empty or malformed HTML', () => {
+    it('should handle empty or malformed HTML', async () => {
       const html = '';
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.title).toBe('');
       expect(result.content).toBe('');
       expect(result.author).toBeUndefined();
       expect(result.publishedDate).toBeUndefined();
     });
 
-    it('should clean HTML entities and extra whitespace', () => {
+    it('should clean HTML entities and extra whitespace', async () => {
       const html = `
         <html>
           <head><title>Test &amp; Article</title></head>
@@ -132,12 +130,12 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.title).toBe('Test & Article');
       expect(result.content).toContain('Content with entities extra spaces');
     });
 
-    it('should prefer h1 title when title tag is missing', () => {
+    it('should prefer h1 title when title tag is missing', async () => {
       const html = `
         <html>
           <body>
@@ -149,7 +147,7 @@ describe('Article Fetcher Functions', () => {
         </html>
       `;
 
-      const result = extractArticleContent(html);
+      const result = await extractArticleContent(html);
       expect(result.title).toBe('Main Article Heading');
     });
   });

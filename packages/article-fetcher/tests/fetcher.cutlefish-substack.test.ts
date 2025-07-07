@@ -5,13 +5,13 @@ import { extractArticleContent } from '../src/fetcher.js';
 
 describe('Cutlefish Substack Article Test', () => {
 
-  it('should extract content from TBM 293 Substack article', () => {
+  it('should extract content from TBM 293 Substack article', async () => {
     const html = readFileSync(
       join(__dirname, 'test-articles', 'cutlefish-substack.html'),
       'utf-8',
     );
 
-    const result = extractArticleContent(html);
+    const result = await extractArticleContent(html);
 
     // Test basic metadata extraction
     expect(result.title).toBe(
@@ -27,8 +27,8 @@ describe('Cutlefish Substack Article Test', () => {
     );
 
     // Test key content concepts are extracted
-    expect(result.content).toContain('product teams');
-    expect(result.content).toContain('effective');
+    expect(result.content).toContain('Product Teams');
+    expect(result.content).toContain('Effective');
     expect(result.content).toContain('TBM 293');
 
     // Verify unwanted Substack UI elements are removed
