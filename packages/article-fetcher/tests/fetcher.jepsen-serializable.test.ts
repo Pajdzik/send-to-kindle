@@ -20,8 +20,8 @@ describe('Jepsen Serializable Article Test', () => {
     expect(result.content).toContain(
       'serializability means that transactions appear to have occurred in',
     );
-    expect(result.content).toContain('multi-object property');
-    expect(result.content).toContain('atomically');
+    expect(result.content).toContain('<em>multi-object</em> property');
+    expect(result.content).toContain('<em>atomically</em>');
 
     // Test content is extracted (basic checks)
     expect(result.content).toContain('ANSI SQL 1999 spec');

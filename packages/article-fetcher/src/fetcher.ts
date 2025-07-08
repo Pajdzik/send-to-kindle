@@ -59,7 +59,7 @@ const DATE_SELECTORS = [
 ] as const;
 
 const MIN_PARAGRAPH_LENGTH = 30;
-const MIN_LIST_ITEM_LENGTH = 10;
+
 
 type DOMDocument = Document;
 type DOMElement = Element;
@@ -179,7 +179,7 @@ const findContentBySelectors = (
     EffectArray.map((selector: string) =>
       pipe(
         Option.fromNullable(document.querySelector(selector)),
-        Option.map(extractTextFromElement),
+        Option.map(preserveFormattingInElement),
       ),
     ),
     EffectArray.findFirst(Option.isSome),
@@ -210,8 +210,7 @@ const extractElementsText = (
 ): Effect.Effect<ReadonlyArray<string>, never> =>
   pipe(
     EffectArray.fromIterable(document.querySelectorAll(selector)),
-    EffectArray.map((element: Element) => element.textContent?.trim() || ''),
-    EffectArray.map(cleanContentText),
+    EffectArray.map((element: Element) => preserveFormattingInElement(element)),
     EffectArray.filter((text: string) => text.length > minLength),
     Effect.succeed,
   );
@@ -259,42 +258,23 @@ const removeElementsByClasses = (
     Effect.map(() => void 0),
   );
 
-const extractTextFromElement = (element: DOMElement): string => {
-  const paragraphs = pipe(
-    EffectArray.fromIterable(element.querySelectorAll('p')),
-    EffectArray.map((p: Element) => p.textContent?.trim() || ''),
-    EffectArray.map(cleanContentText),
-    EffectArray.filter((text: string) => text.length > MIN_LIST_ITEM_LENGTH),
+const preserveFormattingInElement = (element: Element): string => {
+  // Remove unwanted child elements while preserving formatting
+  const unwantedChildren = element.querySelectorAll(
+    `${UNWANTED_SELECTORS.join(', ')}, ${UNWANTED_CLASSES.map(cls => `.${cls}`).join(', ')}`
   );
-
-  const headings = pipe(
-    EffectArray.fromIterable(
-      element.querySelectorAll('h1, h2, h3, h4, h5, h6'),
-    ),
-    EffectArray.map((h: Element) => h.textContent?.trim() || ''),
-    EffectArray.map(cleanContentText),
-    EffectArray.filter((text: string) => text.length > 0),
-  );
-
-  const lists = pipe(
-    EffectArray.fromIterable(element.querySelectorAll('li')),
-    EffectArray.map((li: Element) => li.textContent?.trim() || ''),
-    EffectArray.map(cleanContentText),
-    EffectArray.filter((text: string) => text.length > MIN_LIST_ITEM_LENGTH),
-  );
-
-  const allContent = [...headings, ...paragraphs, ...lists];
-
-  return allContent.length > 0
-    ? allContent.join(' ')
-    : cleanContentText(element.textContent?.trim() || '');
+  for (const el of unwantedChildren) {
+    el.remove();
+  }
+  
+  return element.innerHTML.trim();
 };
+
 
 const extractAllTextFromElement = (element: DOMElement | null): string =>
   pipe(
     Option.fromNullable(element),
-    Option.map((el) => el.textContent?.trim() || ''),
-    Option.map(cleanContentText),
+    Option.map((el) => preserveFormattingInElement(el)),
     Option.getOrElse(() => ''),
   );
 
@@ -307,13 +287,6 @@ const cleanText = (text: string): string => {
   return decoded.replace(/\s+/g, ' ').trim();
 };
 
-const cleanContentText = (text: string): string =>
-  pipe(cleanText(text), (cleaned) =>
-    cleaned
-      .replace(/\s*&\s*/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim(),
-  );
 
 export const fetchArticle = async (url: string): Promise<string> => {
   const result = await Effect.runPromise(

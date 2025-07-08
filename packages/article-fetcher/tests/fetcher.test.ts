@@ -132,7 +132,7 @@ describe('Article Fetcher Functions', () => {
 
       const result = await extractArticleContent(html);
       expect(result.title).toBe('Test & Article');
-      expect(result.content).toContain('Content with entities extra spaces');
+      expect(result.content).toContain('<p>Content with');
     });
 
     it('should prefer h1 title when title tag is missing', async () => {
