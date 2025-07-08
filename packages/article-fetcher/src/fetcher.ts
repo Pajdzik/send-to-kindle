@@ -170,6 +170,34 @@ const extractMainContent = (
     ),
   );
 
+const findTitleH1BeforeContent = (
+  document: DOMDocument,
+  contentElement: Element,
+): string | null => {
+  // Look for h1 elements with common title classes
+  const titleSelectors = [
+    'h1.title',
+    'h1.entry-title',
+    'h1.post-title',
+    'h1.article-title',
+    'h1[class*="title"]',
+  ];
+  
+  for (const selector of titleSelectors) {
+    const titleElement = document.querySelector(selector);
+    if (titleElement) {
+      // Check if this h1 is before the content element in DOM order
+      const titlePosition = titleElement.compareDocumentPosition(contentElement);
+      // DOCUMENT_POSITION_FOLLOWING = 4
+      if (titlePosition & 4) {
+        return titleElement.textContent?.trim() || null;
+      }
+    }
+  }
+  
+  return null;
+};
+
 const findContentBySelectors = (
   document: DOMDocument,
   selectors: readonly string[],
@@ -179,7 +207,17 @@ const findContentBySelectors = (
     EffectArray.map((selector: string) =>
       pipe(
         Option.fromNullable(document.querySelector(selector)),
-        Option.map(preserveFormattingInElement),
+        Option.map((element) => {
+          // Check if there's a title h1 element before the main content
+          const titleH1 = findTitleH1BeforeContent(document, element);
+          const contentHtml = preserveFormattingInElement(element);
+          
+          // If we found a title h1, prepend it to the content
+          if (titleH1) {
+            return `<h1>${titleH1}</h1>${contentHtml}`;
+          }
+          return contentHtml;
+        }),
       ),
     ),
     EffectArray.findFirst(Option.isSome),

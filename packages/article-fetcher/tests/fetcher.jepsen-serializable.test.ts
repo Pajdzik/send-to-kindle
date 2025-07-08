@@ -15,6 +15,7 @@ describe('Jepsen Serializable Article Test', () => {
 
     // Test basic metadata extraction
     expect(result.title).toBe('Serializability');
+    expect(result.content).toContain('Serializability');
 
     // Test core concept extraction
     expect(result.content).toContain(
