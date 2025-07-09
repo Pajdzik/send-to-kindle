@@ -4,11 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Structure
 
-This is a Node.js monorepo using TypeScript with workspaces. The main package is `article-fetcher` in `packages/article-fetcher/`.
+This is a Node.js monorepo using TypeScript with workspaces. The main packages are:
 
 ### article-fetcher Package
 
 The `article-fetcher` package extracts content from web articles. It parses HTML to extract titles, metadata (author, publication date), and main content while filtering out navigation, sidebars, and other unwanted elements.
+
+### epub-converter Package
+
+The `epub-converter` package converts HTML content to EPUB format. It provides a `convertToEpub` function that takes HTML content and metadata options, returning a complete EPUB file as a Uint8Array. The package creates all required EPUB 3.0 specification files including:
+- Package document (content.opf)
+- Navigation control file (toc.ncx)
+- Container files and metadata
+- Styled XHTML content
+- Basic CSS styling
+
+Usage:
+```typescript
+import { convertToEpub } from 'epub-converter';
+import { Effect } from 'effect';
+
+const epubBuffer = await Effect.runPromise(convertToEpub(htmlContent, {
+  title: 'Article Title',
+  author: 'Author Name',
+  language: 'en'
+}));
+```
+
+### email-sender Package
+
+The `email-sender` package handles email delivery functionality.
 
 ## Development Commands
 
