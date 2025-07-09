@@ -1,0 +1,28 @@
+{
+  "name": "url-to-epub",
+  "version": "1.0.0",
+  "description": "Converts URLs to EPUB format using article-fetcher and epub-converter",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "url-to-epub": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "article-fetcher": "file:../article-fetcher",
+    "epub-converter": "file:../epub-converter",
+    "effect": "^3.16.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.4",
+    "@types/node": "^22.0.0"
+  }
+}
