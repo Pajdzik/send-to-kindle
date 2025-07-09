@@ -1,0 +1,22 @@
+{
+  "name": "epub-converter",
+  "version": "1.0.0",
+  "description": "Converts articles to EPUB format",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "^3.16.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^2.1.9"
+  }
+}
