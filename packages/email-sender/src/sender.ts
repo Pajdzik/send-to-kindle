@@ -1,4 +1,5 @@
-import { Effect, Context, Layer } from 'effect';
+import { Effect, Context, Layer, Config } from 'effect';
+import { Resend, type CreateEmailOptions } from 'resend';
 
 export interface EmailMessage {
   from: string;
@@ -30,8 +31,30 @@ export const makeEmailSender = (sendFn: (message: EmailMessage) => Promise<void>
 export const EmailSenderLive = Layer.effect(
   EmailSender,
   Effect.gen(function* () {
-    const sendFn = (_message: EmailMessage) =>
-      Promise.reject(new Error('Email provider not configured'));
+    const apiKey = yield* Config.string('RESEND_API_KEY');
+    const resend = new Resend(apiKey);
+    
+    const sendFn = async (message: EmailMessage) => {
+      const emailData: CreateEmailOptions = {
+        from: message.from,
+        to: message.to,
+        subject: message.subject,
+        ...(message.html ? { html: message.html } : { text: message.text || '' }),
+      };
+
+      if (message.attachments) {
+        emailData.attachments = message.attachments.map(att => ({
+          filename: att.filename,
+          content: att.content instanceof Buffer ? att.content : Buffer.from(att.content),
+          type: att.contentType,
+        }));
+      }
+
+      const { error } = await resend.emails.send(emailData);
+      if (error) {
+        throw new Error(`Resend API error: ${error.message}`);
+      }
+    };
     
     return makeEmailSender(sendFn);
   })

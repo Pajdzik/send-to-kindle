@@ -13,10 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "effect": "^3.16.12"
-  },
-  "devDependencies": {
-    "typescript": "^5.4.5",
-    "vitest": "^3.2.4"
+    "effect": "^3.16.12",
+    "resend": "^4.6.0"
   }
 }
