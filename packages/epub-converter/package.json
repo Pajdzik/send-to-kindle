@@ -15,10 +15,5 @@
   "dependencies": {
     "effect": "^3.16.12",
     "jszip": "^3.10.1"
-  },
-  "devDependencies": {
-    "@types/jszip": "^3.4.0",
-    "typescript": "^5.4.5",
-    "vitest": "^3.2.4"
   }
 }

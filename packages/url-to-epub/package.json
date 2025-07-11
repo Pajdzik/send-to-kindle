@@ -20,10 +20,5 @@
     "article-fetcher": "file:../article-fetcher",
     "epub-converter": "file:../epub-converter",
     "effect": "^3.16.12"
-  },
-  "devDependencies": {
-    "typescript": "^5.4.5",
-    "vitest": "^3.2.4",
-    "@types/node": "^22.0.0"
   }
 }
