@@ -1,0 +1,25 @@
+{
+  "name": "url-to-kindle-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker that converts URLs to EPUB and sends to Kindle",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "wrangler deploy --dry-run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "article-fetcher": "workspace:*",
+    "epub-converter": "workspace:*",
+    "email-sender": "workspace:*",
+    "effect": "^3.16.12"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "wrangler": "^3.100.0"
+  }
+}
