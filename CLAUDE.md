@@ -33,7 +33,45 @@ const epubBuffer = await Effect.runPromise(convertToEpub(htmlContent, {
 
 ### email-sender Package
 
-The `email-sender` package handles email delivery functionality.
+The `email-sender` package handles email delivery functionality using Resend API. It provides an Effect-based EmailSender service that can send emails with attachments. The package uses dependency injection through Effect's Context system.
+
+Usage:
+```typescript
+import { EmailSender, EmailSenderLive, type EmailMessage } from 'email-sender';
+import { Effect } from 'effect';
+
+const message: EmailMessage = {
+  from: 'sender@example.com',
+  to: 'recipient@example.com',
+  subject: 'Subject',
+  text: 'Body text',
+  attachments: [{ filename: 'file.pdf', content: buffer }]
+};
+
+const program = Effect.gen(function* () {
+  const emailSender = yield* EmailSender;
+  yield* emailSender.send(message);
+});
+
+await Effect.runPromise(program.pipe(Effect.provide(EmailSenderLive)));
+```
+
+### url-to-kindle-worker Package
+
+The `url-to-kindle-worker` package is a Cloudflare Worker that orchestrates the complete flow: fetching articles, converting to EPUB, and sending to Kindle via email. It accepts POST requests with URL and Kindle email address, then processes the article through the pipeline.
+
+The worker expects a JSON payload:
+```typescript
+{
+  url: string;
+  kindleEmail: string;
+  fromEmail?: string;
+  subject?: string;
+}
+```
+
+Environment variables required:
+- `RESEND_API_KEY`: API key for sending emails through Resend
 
 ## Development Commands
 
@@ -55,12 +93,20 @@ Within each package directory (e.g., `packages/article-fetcher/`):
 - `npm run test:watch` - Run package tests in watch mode
 - `npm run typecheck` - Type check the package
 
+For the Cloudflare Worker (`packages/url-to-kindle-worker/`):
+- `npm run dev` - Start local development server with Wrangler
+- `npm run build` - Validate deployment bundle
+- `npm run deploy` - Deploy to Cloudflare Workers
+- `wrangler secret put RESEND_API_KEY` - Set environment variable
+
 ## Tools Configuration
 
 - **TypeScript**: Uses project references with glob pattern for packages
 - **Biome**: Configured for formatting and linting with strict rules
 - **Vitest**: Testing framework with coverage reporting
 - **Turbo**: Build system for monorepo orchestration
+- **Wrangler**: Cloudflare Workers CLI for development and deployment
+- **Effect**: Functional programming library for composable, type-safe error handling
 
 ## Architecture Notes
 
@@ -69,3 +115,6 @@ Within each package directory (e.g., `packages/article-fetcher/`):
 - Composite builds enabled for fast incremental compilation
 - Test files use `.test.ts` extensions and are located in separate `tests/` directories within each package
 - Import statements use `.js` extensions for proper ESM resolution
+- Effect library used throughout for functional programming patterns and error handling
+- Cloudflare Worker uses workspace dependencies for shared functionality
+- Email delivery handled through Resend API with proper attachment support for EPUB files

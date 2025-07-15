@@ -1,0 +1,11 @@
+name = "url-to-kindle-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production.vars]
+# Add your environment variables here
+# RESEND_API_KEY will be set via wrangler secret
+
+[build]
+command = "npm run build"
