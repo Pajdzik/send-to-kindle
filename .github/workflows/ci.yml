@@ -24,6 +24,9 @@ jobs:
       - name: Build packages
         run: npm run build
 
+      - name: Validate Cloudflare Worker
+        run: cd packages/url-to-kindle-worker && npm run build:validate
+
       - name: Run tests
         run: npm run test
 

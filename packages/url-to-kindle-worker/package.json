@@ -5,17 +5,18 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "wrangler deploy --dry-run",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "build": "tsc",
+    "build:validate": "npx wrangler deploy --dry-run",
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "article-fetcher": "workspace:*",
-    "epub-converter": "workspace:*",
-    "email-sender": "workspace:*",
+    "article-fetcher": "file:../article-fetcher",
+    "epub-converter": "file:../epub-converter",
+    "email-sender": "file:../email-sender",
     "effect": "^3.16.12"
   },
   "devDependencies": {

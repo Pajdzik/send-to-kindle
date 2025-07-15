@@ -1,5 +1,5 @@
-import { Effect, Layer, Runtime, Config } from 'effect';
-import { fetchAndExtractArticle, type ArticleContent } from 'article-fetcher';
+import { Effect, ConfigProvider } from 'effect';
+import { fetchAndExtractArticle } from 'article-fetcher';
 import { convertToEpub } from 'epub-converter';
 import { EmailSender, EmailSenderLive, type EmailMessage } from 'email-sender';
 
@@ -13,7 +13,7 @@ interface KindleRequest {
 const processUrlToKindle = (request: KindleRequest) =>
   Effect.gen(function* () {
     // Extract article content from URL
-    const article: ArticleContent = yield* fetchAndExtractArticle(request.url);
+    const article = yield* Effect.promise(() => fetchAndExtractArticle(request.url));
     
     // Convert to EPUB
     const epubBuffer = yield* convertToEpub(article.content, {
@@ -31,7 +31,7 @@ const processUrlToKindle = (request: KindleRequest) =>
       text: `Please find attached the article: ${article.title}`,
       attachments: [{
         filename: `${article.title || 'article'}.epub`,
-        content: Buffer.from(epubBuffer),
+        content: new Uint8Array(epubBuffer),
         contentType: 'application/epub+zip'
       }]
     };
@@ -45,16 +45,13 @@ const processUrlToKindle = (request: KindleRequest) =>
     };
   });
 
-const WorkerRuntime = Runtime.defaultRuntime.pipe(
-  Runtime.setConfigProvider(
-    Config.fromMap(new Map([
-      ['RESEND_API_KEY', globalThis.RESEND_API_KEY || '']
-    ]))
-  )
-);
+const createConfigProvider = (env: { RESEND_API_KEY: string }) =>
+  ConfigProvider.fromMap(new Map([
+    ['RESEND_API_KEY', env.RESEND_API_KEY || '']
+  ]));
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: { RESEND_API_KEY: string }): Promise<Response> {
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { status: 405 });
     }
@@ -88,11 +85,13 @@ export default {
         );
       }
       
+      const configProvider = createConfigProvider(env);
       const program = processUrlToKindle(body).pipe(
-        Effect.provide(EmailSenderLive)
+        Effect.provide(EmailSenderLive),
+        Effect.withConfigProvider(configProvider)
       );
       
-      const result = await Runtime.runPromise(WorkerRuntime)(program);
+      const result = await Effect.runPromise(program);
       
       return new Response(
         JSON.stringify(result),
