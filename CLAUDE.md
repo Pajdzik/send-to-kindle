@@ -56,6 +56,23 @@ const program = Effect.gen(function* () {
 await Effect.runPromise(program.pipe(Effect.provide(EmailSenderLive)));
 ```
 
+### browser-extension Package
+
+The `browser-extension` package is a cross-browser extension (Chrome/Firefox) that allows users to send web pages directly to their Kindle. It extracts clean content from web pages and sends it via the url-to-kindle-worker API.
+
+Features:
+- Content extraction from web pages with smart filtering
+- Configuration UI for Kindle email and worker URL
+- Browser popup interface and right-click context menu
+- Chrome storage API for settings persistence
+- Manifest V3 compatibility
+
+Usage:
+1. Build: `npm run build`
+2. Load unpacked extension in Chrome/Firefox developer mode
+3. Configure Kindle email and worker URL
+4. Click extension icon or right-click → "Send to Kindle"
+
 ### url-to-kindle-worker Package
 
 The `url-to-kindle-worker` package is a Cloudflare Worker that orchestrates the complete flow: fetching articles, converting to EPUB, and sending to Kindle via email. It accepts POST requests with URL and Kindle email address, then processes the article through the pipeline.
@@ -98,6 +115,13 @@ For the Cloudflare Worker (`packages/url-to-kindle-worker/`):
 - `npm run build` - Validate deployment bundle
 - `npm run deploy` - Deploy to Cloudflare Workers
 - `wrangler secret put RESEND_API_KEY` - Set environment variable
+
+For the Browser Extension (`packages/browser-extension/`):
+- `npm run build` - Build extension for production
+- `npm run dev` - Build in watch mode for development
+- `npm run copy-assets` - Copy static assets (HTML, CSS, manifest)
+- `npm run package` - Create distributable ZIP file
+- `npm run typecheck` - Type check extension code
 
 ## Tools Configuration
 

@@ -1,0 +1,17 @@
+{
+  "name": "browser-extension",
+  "version": "1.0.0",
+  "description": "Browser extension to send web pages to Kindle via email",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && npm run copy-assets",
+    "dev": "tsc --watch",
+    "copy-assets": "cp src/manifest.json dist/ && cp -r src/popup dist/ && cp src/popup/*.css dist/popup/ && cp src/popup/*.html dist/popup/",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run build && cd dist && zip -r ../browser-extension.zip ."
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.4.5"
+  }
+}
