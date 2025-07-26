@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run bundle",
+    "bundle": "esbuild dist/index.js --bundle --format=esm --platform=node --outfile=dist/index.bundled.js --external:cloudflare:workers --main-fields=main,module",
     "build:validate": "npx wrangler deploy --dry-run",
     "dev": "npx wrangler dev",
     "deploy": "npx wrangler deploy",
@@ -15,12 +16,13 @@
   },
   "dependencies": {
     "article-fetcher": "file:../article-fetcher",
-    "epub-converter": "file:../epub-converter",
+    "effect": "^3.16.12",
     "email-sender": "file:../email-sender",
-    "effect": "^3.16.12"
+    "epub-converter": "file:../epub-converter"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",
+    "esbuild": "^0.25.8",
     "typescript": "^5.4.5",
     "vitest": "^3.2.4",
     "wrangler": "^3.100.0"

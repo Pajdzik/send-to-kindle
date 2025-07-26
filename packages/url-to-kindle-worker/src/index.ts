@@ -1,4 +1,4 @@
-import { fetchAndExtractArticle } from 'article-fetcher';
+import { fetchAndExtractArticle, type ArticleContent } from 'article-fetcher';
 import { ConfigProvider, Effect } from 'effect';
 import { type EmailMessage, EmailSender, EmailSenderLive } from 'email-sender';
 import { convertToEpub } from 'epub-converter';
@@ -73,7 +73,7 @@ const validateKindleRequest = (obj: unknown): KindleRequest => {
 const processUrlToKindle = (request: KindleRequest) =>
   Effect.gen(function* () {
     // Extract article content from URL
-    const article = yield* Effect.promise(() =>
+    const article: ArticleContent = yield* Effect.promise(() =>
       fetchAndExtractArticle(request.url),
     );
 
