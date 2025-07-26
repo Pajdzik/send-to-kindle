@@ -29,28 +29,34 @@ const isKindleRequest = (obj: unknown): obj is KindleRequest => {
 };
 
 const validateKindleRequest = (obj: unknown): KindleRequest => {
+  if (typeof obj !== 'object' || obj === null) {
+    throw new ValidationError('Invalid request format');
+  }
+  
+  const typedObj = obj as any;
+  
+  if (!typedObj.url || !typedObj.kindleEmail) {
+    throw new ValidationError('Missing required fields: url, kindleEmail');
+  }
+  
   if (!isKindleRequest(obj)) {
     throw new ValidationError('Invalid request format');
   }
   
-  if (!obj.url || !obj.kindleEmail) {
-    throw new ValidationError('Missing required fields: url, kindleEmail');
-  }
-  
   // Validate URL format
   try {
-    new URL(obj.url);
+    new URL(typedObj.url);
   } catch {
     throw new ValidationError('Invalid URL format');
   }
   
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(obj.kindleEmail)) {
+  if (!emailRegex.test(typedObj.kindleEmail)) {
     throw new ValidationError('Invalid email format');
   }
   
-  return obj;
+  return typedObj;
 };
 
 const processUrlToKindle = (request: KindleRequest) =>
