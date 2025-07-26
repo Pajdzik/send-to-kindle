@@ -132,6 +132,16 @@ For the Browser Extension (`packages/browser-extension/`):
 - **Wrangler**: Cloudflare Workers CLI for development and deployment
 - **Effect**: Functional programming library for composable, type-safe error handling
 
+## Development Workflow
+
+**IMPORTANT: Always run these commands in order after making any code changes:**
+
+1. `npm run build` - Build all packages and check for compilation errors
+2. `npm run test` - Run all tests to ensure functionality
+3. `npm run lint` - Check code quality and style
+
+All three must pass before considering changes complete. If any fail, fix the issues and repeat the workflow.
+
 ## Architecture Notes
 
 - All packages use ESM modules (`"type": "module"`)

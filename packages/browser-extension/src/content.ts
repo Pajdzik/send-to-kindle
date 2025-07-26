@@ -29,7 +29,7 @@ function extractPageContent(): PageContent {
 
   for (const selector of elementsToRemove) {
     const elements = clonedDocument.querySelectorAll(selector);
-    for (const el of elements) {
+    for (const el of Array.from(elements)) {
       el.remove();
     }
   }
@@ -74,7 +74,7 @@ function extractPageContent(): PageContent {
     for (const selector of unwantedSelectors) {
       const elements = contentElement?.querySelectorAll(selector);
       if (elements) {
-        for (const el of elements) {
+        for (const el of Array.from(elements)) {
           el.remove();
         }
       }
