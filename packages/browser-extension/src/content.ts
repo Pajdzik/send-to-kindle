@@ -27,10 +27,12 @@ function extractPageContent(): PageContent {
 
   const clonedDocument = document.cloneNode(true) as Document;
 
-  elementsToRemove.forEach((selector) => {
+  for (const selector of elementsToRemove) {
     const elements = clonedDocument.querySelectorAll(selector);
-    elements.forEach((el) => el.remove());
-  });
+    for (const el of elements) {
+      el.remove();
+    }
+  }
 
   // Try to find the main content area
   const contentSelectors = [
@@ -69,10 +71,14 @@ function extractPageContent(): PageContent {
       '.comments',
     ];
 
-    unwantedSelectors.forEach((selector) => {
+    for (const selector of unwantedSelectors) {
       const elements = contentElement?.querySelectorAll(selector);
-      elements?.forEach((el) => el.remove());
-    });
+      if (elements) {
+        for (const el of elements) {
+          el.remove();
+        }
+      }
+    }
   }
 
   // Extract author information

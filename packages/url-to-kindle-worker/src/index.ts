@@ -17,48 +17,50 @@ class ValidationError extends Error {
   }
 }
 
+const hasProperty = (obj: Record<string, unknown>, key: string): boolean => {
+  return key in obj;
+};
+
 const isKindleRequest = (obj: unknown): obj is KindleRequest => {
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const record = obj as Record<string, unknown>;
+  
   return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof (obj as any).url === 'string' &&
-    typeof (obj as any).kindleEmail === 'string' &&
-    (typeof (obj as any).fromEmail === 'string' ||
-      (obj as any).fromEmail === undefined) &&
-    (typeof (obj as any).subject === 'string' ||
-      (obj as any).subject === undefined)
+    hasProperty(record, 'url') &&
+    hasProperty(record, 'kindleEmail') &&
+    typeof record.url === 'string' &&
+    typeof record.kindleEmail === 'string' &&
+    (typeof record.fromEmail === 'string' || record.fromEmail === undefined) &&
+    (typeof record.subject === 'string' || record.subject === undefined)
   );
 };
 
 const validateKindleRequest = (obj: unknown): KindleRequest => {
-  if (typeof obj !== 'object' || obj === null) {
-    throw new ValidationError('Invalid request format');
-  }
-
-  const typedObj = obj as any;
-
-  if (!typedObj.url || !typedObj.kindleEmail) {
-    throw new ValidationError('Missing required fields: url, kindleEmail');
-  }
-
   if (!isKindleRequest(obj)) {
     throw new ValidationError('Invalid request format');
   }
 
+  if (!obj.url || !obj.kindleEmail) {
+    throw new ValidationError('Missing required fields: url, kindleEmail');
+  }
+
   // Validate URL format
   try {
-    new URL(typedObj.url);
+    new URL(obj.url);
   } catch {
     throw new ValidationError('Invalid URL format');
   }
 
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(typedObj.kindleEmail)) {
+  if (!emailRegex.test(obj.kindleEmail)) {
     throw new ValidationError('Invalid email format');
   }
 
-  return typedObj;
+  return obj;
 };
 
 const processUrlToKindle = (request: KindleRequest) =>
@@ -153,6 +155,6 @@ export default {
       );
     }
   },
-} satisfies ExportedHandler<{
-  RESEND_API_KEY: string;
-}>;
+};
+
+export type { KindleRequest };
