@@ -27,7 +27,10 @@ class ElementTypeError extends Error {
 }
 
 class ExtensionError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
+  constructor(
+    message: string,
+    public readonly cause?: Error,
+  ) {
     super(message);
     this.name = 'ExtensionError';
   }
@@ -42,7 +45,10 @@ class PopupManager {
   private pageUrlSpan!: HTMLSpanElement;
   private statusMessage!: HTMLDivElement;
 
-  private getElement<T extends HTMLElement>(id: string, expectedType: new () => T): T {
+  private getElement<T extends HTMLElement>(
+    id: string,
+    expectedType: new () => T,
+  ): T {
     const element = document.getElementById(id);
     if (!element) {
       throw new ElementNotFoundError(id);
@@ -71,24 +77,29 @@ class PopupManager {
   }
 
   private attachEventListeners(): void {
-    this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
+    this.saveConfigBtn.addEventListener('click', () =>
+      this.saveConfiguration(),
+    );
     this.sendPageBtn.addEventListener('click', () => this.sendCurrentPage());
   }
 
   private async loadConfiguration(): Promise<void> {
     try {
-      const result = await chrome.storage.sync.get(['kindleEmail', 'workerUrl']);
-      
+      const result = await chrome.storage.sync.get([
+        'kindleEmail',
+        'workerUrl',
+      ]);
+
       if (result.kindleEmail) {
         this.kindleEmailInput.value = result.kindleEmail;
       }
-      
+
       if (result.workerUrl) {
         this.workerUrlInput.value = result.workerUrl;
       }
-      
+
       this.updateSendButtonState();
-    } catch (error) {
+    } catch (_error) {
       this.showStatus('Failed to load configuration', 'error');
     }
   }
@@ -115,20 +126,23 @@ class PopupManager {
     try {
       await chrome.storage.sync.set({
         kindleEmail,
-        workerUrl
+        workerUrl,
       });
 
       this.showStatus('Configuration saved successfully!', 'success');
       this.updateSendButtonState();
-    } catch (error) {
+    } catch (_error) {
       this.showStatus('Failed to save configuration', 'error');
     }
   }
 
   private async loadCurrentPageInfo(): Promise<void> {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
       if (tab.id && tab.title && tab.url) {
         this.pageTitleSpan.textContent = tab.title;
         this.pageUrlSpan.textContent = tab.url;
@@ -136,7 +150,7 @@ class PopupManager {
         this.pageTitleSpan.textContent = 'Unable to get page info';
         this.pageUrlSpan.textContent = 'No active tab';
       }
-    } catch (error) {
+    } catch (_error) {
       this.pageTitleSpan.textContent = 'Error loading page info';
       this.pageUrlSpan.textContent = 'Error';
     }
@@ -144,9 +158,12 @@ class PopupManager {
 
   private async sendCurrentPage(): Promise<void> {
     const config = await this.getConfiguration();
-    
+
     if (!config) {
-      this.showStatus('Please configure your Kindle email and worker URL first', 'error');
+      this.showStatus(
+        'Please configure your Kindle email and worker URL first',
+        'error',
+      );
       return;
     }
 
@@ -156,30 +173,37 @@ class PopupManager {
 
     try {
       // Get current tab
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
       if (!tab.id) {
         throw new ExtensionError('No active tab found');
       }
 
       // Extract content from the page
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
-      
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: 'extractContent',
+      });
+
       if (!response.success) {
-        throw new ExtensionError(response.error || 'Failed to extract page content');
+        throw new ExtensionError(
+          response.error || 'Failed to extract page content',
+        );
       }
 
       const pageContent: PageContent = response.content;
-      
+
       this.showStatus('Sending to Kindle...', 'info');
 
       // Send to worker
       await this.sendToWorker(config, pageContent);
-      
+
       this.showStatus('Successfully sent to Kindle!', 'success');
-      
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       this.showStatus(`Failed to send: ${errorMessage}`, 'error');
     } finally {
       this.sendPageBtn.disabled = false;
@@ -192,7 +216,7 @@ class PopupManager {
       url: content.url,
       kindleEmail: config.kindleEmail,
       subject: `Kindle: ${content.title}`,
-      fromEmail: 'extension@sendtokindle.com'
+      fromEmail: 'extension@sendtokindle.com',
     };
 
     const response = await fetch(config.workerUrl, {
@@ -200,12 +224,16 @@ class PopupManager {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: 'Network error' }));
+      throw new Error(
+        errorData.error || `HTTP ${response.status}: ${response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -213,17 +241,20 @@ class PopupManager {
 
   private async getConfiguration(): Promise<ExtensionConfig | null> {
     try {
-      const result = await chrome.storage.sync.get(['kindleEmail', 'workerUrl']);
-      
+      const result = await chrome.storage.sync.get([
+        'kindleEmail',
+        'workerUrl',
+      ]);
+
       if (result.kindleEmail && result.workerUrl) {
         return {
           kindleEmail: result.kindleEmail,
-          workerUrl: result.workerUrl
+          workerUrl: result.workerUrl,
         };
       }
-      
+
       return null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -231,11 +262,14 @@ class PopupManager {
   private updateSendButtonState(): void {
     const hasEmail = this.kindleEmailInput.value.trim().length > 0;
     const hasWorkerUrl = this.workerUrlInput.value.trim().length > 0;
-    
+
     this.sendPageBtn.disabled = !(hasEmail && hasWorkerUrl);
   }
 
-  private showStatus(message: string, type: 'success' | 'error' | 'info'): void {
+  private showStatus(
+    message: string,
+    type: 'success' | 'error' | 'info',
+  ): void {
     this.statusMessage.textContent = message;
     this.statusMessage.className = `status ${type}`;
     this.statusMessage.classList.remove('hidden');

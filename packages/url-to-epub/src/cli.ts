@@ -32,7 +32,7 @@ function parseArgs(args: string[]): ConversionOptions | null {
   }
 
   const [url, outputPath, ...options] = args;
-  
+
   if (!url || !outputPath) {
     return null;
   }
@@ -40,12 +40,12 @@ function parseArgs(args: string[]): ConversionOptions | null {
   const result: ConversionOptions = {
     url,
     outputPath,
-    debug: false
+    debug: false,
   };
 
   for (let i = 0; i < options.length; i++) {
     const arg = options[i];
-    
+
     switch (arg) {
       case '--title':
         if (i + 1 < options.length) {
@@ -83,14 +83,14 @@ function parseArgs(args: string[]): ConversionOptions | null {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  
+
   if (args.includes('--help') || args.length === 0) {
     printUsage();
     process.exit(0);
   }
 
   const options = parseArgs(args);
-  
+
   if (!options) {
     console.error('❌ Invalid arguments');
     printUsage();
@@ -98,7 +98,7 @@ async function main(): Promise<void> {
   }
 
   const program = convertUrlToEpub(options);
-  
+
   try {
     await Effect.runPromise(program);
     console.log('🎉 Conversion completed successfully!');

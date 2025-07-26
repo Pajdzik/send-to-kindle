@@ -1,5 +1,5 @@
-import { Effect } from "effect";
-import JSZip from "jszip";
+import { Effect } from 'effect';
+import JSZip from 'jszip';
 
 export interface EpubOptions {
   title: string;
@@ -11,18 +11,21 @@ export interface EpubOptions {
   date?: string;
 }
 
-export const convertToEpub = (htmlContent: string, options: EpubOptions): Effect.Effect<Uint8Array, Error> =>
+export const convertToEpub = (
+  htmlContent: string,
+  options: EpubOptions,
+): Effect.Effect<Uint8Array, Error> =>
   Effect.tryPromise({
     try: async () => {
       const zip = new JSZip();
-      
+
       // Create mimetype file (must be first and uncompressed)
-      zip.file("mimetype", "application/epub+zip");
-      
+      zip.file('mimetype', 'application/epub+zip');
+
       // Create META-INF directory
-      const metaInf = zip.folder("META-INF");
-      if (!metaInf) throw new Error("Failed to create META-INF folder");
-      
+      const metaInf = zip.folder('META-INF');
+      if (!metaInf) throw new Error('Failed to create META-INF folder');
+
       // Create container.xml
       const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -30,46 +33,46 @@ export const convertToEpub = (htmlContent: string, options: EpubOptions): Effect
     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
 </container>`;
-      metaInf.file("container.xml", containerXml);
-      
+      metaInf.file('container.xml', containerXml);
+
       // Create OEBPS directory
-      const oebps = zip.folder("OEBPS");
-      if (!oebps) throw new Error("Failed to create OEBPS folder");
-      
+      const oebps = zip.folder('OEBPS');
+      if (!oebps) throw new Error('Failed to create OEBPS folder');
+
       // Create content.opf (package document)
       const contentOpf = createContentOpf(options);
-      oebps.file("content.opf", contentOpf);
-      
+      oebps.file('content.opf', contentOpf);
+
       // Create toc.ncx (navigation control file)
       const tocNcx = createTocNcx(options);
-      oebps.file("toc.ncx", tocNcx);
-      
+      oebps.file('toc.ncx', tocNcx);
+
       // Create the main HTML file
       const mainHtml = createMainHtml(htmlContent, options);
-      oebps.file("chapter.xhtml", mainHtml);
-      
+      oebps.file('chapter.xhtml', mainHtml);
+
       // Create basic CSS
       const css = createBasicCss();
-      oebps.file("style.css", css);
-      
+      oebps.file('style.css', css);
+
       // Generate the EPUB file
       const epubBuffer = await zip.generateAsync({
-        type: "uint8array",
-        compression: "DEFLATE",
-        compressionOptions: { level: 9 }
+        type: 'uint8array',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 9 },
       });
-      
+
       return epubBuffer;
     },
-    catch: (error) => new Error(`Failed to create EPUB: ${error}`)
+    catch: (error) => new Error(`Failed to create EPUB: ${error}`),
   });
 
 function createContentOpf(options: EpubOptions): string {
   const identifier = options.identifier || `urn:uuid:${generateUUID()}`;
-  const language = options.language || "en";
-  const author = options.author || "Unknown Author";
+  const language = options.language || 'en';
+  const author = options.author || 'Unknown Author';
   const date = options.date || new Date().toISOString().split('T')[0];
-  
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookID">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -95,7 +98,7 @@ function createContentOpf(options: EpubOptions): string {
 
 function createTocNcx(options: EpubOptions): string {
   const identifier = options.identifier || `urn:uuid:${generateUUID()}`;
-  
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head>
@@ -192,17 +195,17 @@ pre code {
 
 function escapeXml(text: string): string {
   return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }

@@ -1,19 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
 import { Effect } from 'effect';
+import { describe, expect, it, vi } from 'vitest';
 import { convertUrlToEpub } from '../src/converter.js';
 import type { ConversionOptions } from '../src/converter.js';
 
 // Mock the dependencies
 vi.mock('article-fetcher', () => ({
-  fetchAndExtractArticle: vi.fn()
+  fetchAndExtractArticle: vi.fn(),
 }));
 
 vi.mock('epub-converter', () => ({
-  convertToEpub: vi.fn()
+  convertToEpub: vi.fn(),
 }));
 
 vi.mock('node:fs/promises', () => ({
-  writeFile: vi.fn()
+  writeFile: vi.fn(),
 }));
 
 describe('URL to EPUB Converter', () => {
@@ -25,7 +25,7 @@ describe('URL to EPUB Converter', () => {
   it('should return an Effect when called with valid options', () => {
     const options: ConversionOptions = {
       url: 'https://example.com/article',
-      outputPath: '/tmp/test.epub'
+      outputPath: '/tmp/test.epub',
     };
 
     const result = convertUrlToEpub(options);
@@ -39,7 +39,7 @@ describe('URL to EPUB Converter', () => {
       title: 'Test Title',
       author: 'Test Author',
       language: 'en',
-      debug: true
+      debug: true,
     };
 
     const result = convertUrlToEpub(options);

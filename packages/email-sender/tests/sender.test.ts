@@ -1,6 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { Effect, Config, ConfigProvider } from 'effect';
-import { EmailSender, EmailSenderLive, makeEmailSender, type EmailMessage } from '../src/sender.js';
+import { Config, ConfigProvider, Effect } from 'effect';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  type EmailMessage,
+  EmailSender,
+  EmailSenderLive,
+  makeEmailSender,
+} from '../src/sender.js';
 
 vi.mock('resend', () => ({
   Resend: vi.fn().mockImplementation(() => ({
@@ -43,7 +48,7 @@ describe('EmailSender', () => {
     };
 
     await expect(Effect.runPromise(sender.send(message))).rejects.toThrow(
-      'Failed to send email: Error: Send failed'
+      'Failed to send email: Error: Send failed',
     );
   });
 
@@ -53,23 +58,25 @@ describe('EmailSender', () => {
       to: 'test@example.com',
       subject: 'Test Subject',
       html: '<p>Test body</p>',
-      attachments: [{
-        filename: 'test.txt',
-        content: 'test content',
-        contentType: 'text/plain',
-      }],
+      attachments: [
+        {
+          filename: 'test.txt',
+          content: 'test content',
+          contentType: 'text/plain',
+        },
+      ],
     };
 
-    const configProvider = ConfigProvider.fromMap(new Map([
-      ['RESEND_API_KEY', 'test-api-key'],
-    ]));
+    const configProvider = ConfigProvider.fromMap(
+      new Map([['RESEND_API_KEY', 'test-api-key']]),
+    );
 
     const program = Effect.gen(function* () {
       const sender = yield* EmailSender;
       yield* sender.send(message);
     }).pipe(
       Effect.provide(EmailSenderLive),
-      Effect.withConfigProvider(configProvider)
+      Effect.withConfigProvider(configProvider),
     );
 
     await expect(Effect.runPromise(program)).resolves.toBeUndefined();

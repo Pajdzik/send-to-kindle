@@ -1,10 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { fetchArticle, extractArticleContent, extractArticleContentSync } from '../src/fetcher.js';
+import { describe, expect, it } from 'vitest';
+import {
+  extractArticleContent,
+  extractArticleContentSync,
+  fetchArticle,
+} from '../src/fetcher.js';
 
 describe('Article Fetcher Functions', () => {
-  it('should handle network errors when fetching', async () => {
-    await expect(fetchArticle('https://non-existent-domain-12345.com')).rejects.toThrow();
-  }, { timeout: 10000 });
+  it(
+    'should handle network errors when fetching',
+    async () => {
+      await expect(
+        fetchArticle('https://non-existent-domain-12345.com'),
+      ).rejects.toThrow();
+    },
+    { timeout: 10000 },
+  );
 
   describe('extractContent', () => {
     it('should extract basic title and content', async () => {

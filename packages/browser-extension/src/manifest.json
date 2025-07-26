@@ -10,10 +10,7 @@
     "contextMenus",
     "notifications"
   ],
-  "host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
+  "host_permissions": ["https://*/*", "http://*/*"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "Send to Kindle"

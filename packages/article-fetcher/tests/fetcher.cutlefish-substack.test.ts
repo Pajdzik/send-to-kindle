@@ -1,10 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
 import { extractArticleContent } from '../src/fetcher.js';
 
 describe('Cutlefish Substack Article Test', () => {
-
   it('should extract content from TBM 293 Substack article', async () => {
     const html = readFileSync(
       join(__dirname, 'test-articles', 'cutlefish-substack.html'),
@@ -34,7 +33,7 @@ describe('Cutlefish Substack Article Test', () => {
     // Verify core content is preserved in HTML format
     expect(result.content).toContain('<h1');
     expect(result.content).toContain('<p>');
-    
+
     // Verify some unwanted Substack UI elements are removed (but be realistic about HTML formatting)
     expect(result.content).not.toContain('Subscribe');
     expect(result.content).not.toContain('Sign in');

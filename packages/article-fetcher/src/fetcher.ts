@@ -1,5 +1,5 @@
+import { Effect, Array as EffectArray, Option, pipe } from 'effect';
 import { JSDOM } from 'jsdom';
-import { Effect, pipe, Option, Array as EffectArray } from 'effect';
 
 export interface ArticleContent {
   readonly title: string;
@@ -9,14 +9,20 @@ export interface ArticleContent {
 }
 
 export class ArticleFetchError extends Error {
-  constructor(message: string, public readonly statusCode?: number) {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+  ) {
     super(message);
     this.name = 'ArticleFetchError';
   }
 }
 
 export class ArticleParseError extends Error {
-  constructor(message: string, public readonly url?: string) {
+  constructor(
+    message: string,
+    public readonly url?: string,
+  ) {
     super(message);
     this.name = 'ArticleParseError';
   }
@@ -73,7 +79,6 @@ const DATE_SELECTORS = [
 ] as const;
 
 const MIN_PARAGRAPH_LENGTH = 30;
-
 
 type DOMDocument = Document;
 type DOMElement = Element;
@@ -196,19 +201,20 @@ const findTitleH1BeforeContent = (
     'h1.article-title',
     'h1[class*="title"]',
   ];
-  
+
   for (const selector of titleSelectors) {
     const titleElement = document.querySelector(selector);
     if (titleElement) {
       // Check if this h1 is before the content element in DOM order
-      const titlePosition = titleElement.compareDocumentPosition(contentElement);
+      const titlePosition =
+        titleElement.compareDocumentPosition(contentElement);
       // DOCUMENT_POSITION_FOLLOWING = 4
       if (titlePosition & 4) {
         return titleElement.textContent?.trim() || null;
       }
     }
   }
-  
+
   return null;
 };
 
@@ -225,7 +231,7 @@ const findContentBySelectors = (
           // Check if there's a title h1 element before the main content
           const titleH1 = findTitleH1BeforeContent(document, element);
           const contentHtml = preserveFormattingInElement(element);
-          
+
           // If we found a title h1, prepend it to the content
           if (titleH1) {
             return `<h1>${titleH1}</h1>${contentHtml}`;
@@ -313,15 +319,14 @@ const removeElementsByClasses = (
 const preserveFormattingInElement = (element: Element): string => {
   // Remove unwanted child elements while preserving formatting
   const unwantedChildren = element.querySelectorAll(
-    `${UNWANTED_SELECTORS.join(', ')}, ${UNWANTED_CLASSES.map(cls => `.${cls}`).join(', ')}`
+    `${UNWANTED_SELECTORS.join(', ')}, ${UNWANTED_CLASSES.map((cls) => `.${cls}`).join(', ')}`,
   );
   for (const el of unwantedChildren) {
     el.remove();
   }
-  
+
   return element.innerHTML.trim();
 };
-
 
 const extractAllTextFromElement = (element: DOMElement | null): string =>
   pipe(
@@ -339,24 +344,31 @@ const cleanText = (text: string): string => {
   return decoded.replace(/\s+/g, ' ').trim();
 };
 
-
 export const fetchArticle = async (url: string): Promise<string> => {
   const result = await Effect.runPromise(
     Effect.tryPromise({
       try: async () => {
         const response = await fetch(url);
         if (!response.ok) {
-          throw new ArticleFetchError(`Failed to fetch article: ${response.status} ${response.statusText}`, response.status);
+          throw new ArticleFetchError(
+            `Failed to fetch article: ${response.status} ${response.statusText}`,
+            response.status,
+          );
         }
         return response.text();
       },
-      catch: (error) => new Error(`Network error: ${error instanceof Error ? error.message : String(error)}`),
-    })
+      catch: (error) =>
+        new Error(
+          `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+    }),
   );
   return result;
 };
 
-export const extractArticleContent = async (html: string): Promise<ArticleContent> => {
+export const extractArticleContent = async (
+  html: string,
+): Promise<ArticleContent> => {
   return Effect.runPromise(extractContent(html));
 };
 
@@ -364,7 +376,9 @@ export const extractArticleContentSync = (html: string): ArticleContent => {
   return Effect.runSync(extractContent(html));
 };
 
-export const fetchAndExtractArticle = async (url: string): Promise<ArticleContent> => {
+export const fetchAndExtractArticle = async (
+  url: string,
+): Promise<ArticleContent> => {
   const html = await fetchArticle(url);
   return extractArticleContent(html);
 };

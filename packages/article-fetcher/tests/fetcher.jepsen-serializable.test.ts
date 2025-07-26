@@ -1,10 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
 import { extractArticleContent } from '../src/fetcher.js';
 
 describe('Jepsen Serializable Article Test', () => {
-
   it('should extract content from complete jepsen.io serializable consistency article', async () => {
     const html = readFileSync(
       join(__dirname, 'test-articles', 'jepsen.html'),
