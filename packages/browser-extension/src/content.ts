@@ -71,7 +71,7 @@ function extractPageContent(): PageContent {
 
     unwantedSelectors.forEach((selector) => {
       const elements = contentElement?.querySelectorAll(selector);
-      elements.forEach((el) => el.remove());
+      elements?.forEach((el) => el.remove());
     });
   }
 
