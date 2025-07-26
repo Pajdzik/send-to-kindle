@@ -1,6 +1,13 @@
 import { Effect, Context, Layer, Config } from 'effect';
 import { Resend, type CreateEmailOptions } from 'resend';
 
+export class EmailSendError extends Error {
+  constructor(message: string, public readonly cause?: Error) {
+    super(message);
+    this.name = 'EmailSendError';
+  }
+}
+
 export interface EmailMessage {
   from: string;
   to: string;
@@ -24,7 +31,7 @@ export const makeEmailSender = (sendFn: (message: EmailMessage) => Promise<void>
   send: (message: EmailMessage) =>
     Effect.tryPromise({
       try: () => sendFn(message),
-      catch: (error) => new Error(`Failed to send email: ${error}`),
+      catch: (error) => new EmailSendError(`Failed to send email: ${error}`, error instanceof Error ? error : undefined),
     }),
 });
 
@@ -52,7 +59,7 @@ export const EmailSenderLive = Layer.effect(
 
       const { error } = await resend.emails.send(emailData);
       if (error) {
-        throw new Error(`Resend API error: ${error.message}`);
+        throw new EmailSendError(`Resend API error: ${error.message}`);
       }
     };
     

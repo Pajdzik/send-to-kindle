@@ -8,6 +8,20 @@ export interface ArticleContent {
   readonly publishedDate?: string;
 }
 
+export class ArticleFetchError extends Error {
+  constructor(message: string, public readonly statusCode?: number) {
+    super(message);
+    this.name = 'ArticleFetchError';
+  }
+}
+
+export class ArticleParseError extends Error {
+  constructor(message: string, public readonly url?: string) {
+    super(message);
+    this.name = 'ArticleParseError';
+  }
+}
+
 const UNWANTED_SELECTORS = [
   'script',
   'style',
@@ -332,7 +346,7 @@ export const fetchArticle = async (url: string): Promise<string> => {
       try: async () => {
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(`Failed to fetch article: ${response.status} ${response.statusText}`);
+          throw new ArticleFetchError(`Failed to fetch article: ${response.status} ${response.statusText}`, response.status);
         }
         return response.text();
       },

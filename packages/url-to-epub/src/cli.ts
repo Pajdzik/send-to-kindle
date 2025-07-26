@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import { convertUrlToEpub } from './converter.js';
 import type { ConversionOptions } from './converter.js';
 
-function printUsage() {
+function printUsage(): void {
   console.log(`
 Usage: url-to-epub <URL> <OUTPUT_PATH> [OPTIONS]
 
@@ -81,7 +81,7 @@ function parseArgs(args: string[]): ConversionOptions | null {
   return result;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const args = process.argv.slice(2);
   
   if (args.includes('--help') || args.length === 0) {

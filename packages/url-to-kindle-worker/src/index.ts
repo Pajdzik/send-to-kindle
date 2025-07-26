@@ -10,6 +10,49 @@ interface KindleRequest {
   subject?: string;
 }
 
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+const isKindleRequest = (obj: unknown): obj is KindleRequest => {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof (obj as any).url === 'string' &&
+    typeof (obj as any).kindleEmail === 'string' &&
+    (typeof (obj as any).fromEmail === 'string' || (obj as any).fromEmail === undefined) &&
+    (typeof (obj as any).subject === 'string' || (obj as any).subject === undefined)
+  );
+};
+
+const validateKindleRequest = (obj: unknown): KindleRequest => {
+  if (!isKindleRequest(obj)) {
+    throw new ValidationError('Invalid request format');
+  }
+  
+  if (!obj.url || !obj.kindleEmail) {
+    throw new ValidationError('Missing required fields: url, kindleEmail');
+  }
+  
+  // Validate URL format
+  try {
+    new URL(obj.url);
+  } catch {
+    throw new ValidationError('Invalid URL format');
+  }
+  
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(obj.kindleEmail)) {
+    throw new ValidationError('Invalid email format');
+  }
+  
+  return obj;
+};
+
 const processUrlToKindle = (request: KindleRequest) =>
   Effect.gen(function* () {
     // Extract article content from URL
@@ -57,33 +100,8 @@ export default {
     }
     
     try {
-      const body = await request.json() as KindleRequest;
-      
-      if (!body.url || !body.kindleEmail) {
-        return new Response(
-          JSON.stringify({ error: 'Missing required fields: url, kindleEmail' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Validate URL format
-      try {
-        new URL(body.url);
-      } catch {
-        return new Response(
-          JSON.stringify({ error: 'Invalid URL format' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(body.kindleEmail)) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid email format' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
+      const rawBody = await request.json();
+      const body = validateKindleRequest(rawBody);
       
       const configProvider = createConfigProvider(env);
       const program = processUrlToKindle(body).pipe(
@@ -103,6 +121,15 @@ export default {
       
     } catch (error) {
       console.error('Worker error:', error);
+      
+      // Handle validation errors with 400 status
+      if (error instanceof ValidationError) {
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: 'Internal server error',

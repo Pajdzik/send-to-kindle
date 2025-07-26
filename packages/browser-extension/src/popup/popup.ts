@@ -12,6 +12,27 @@ interface PageContent {
   author?: string;
 }
 
+class ElementNotFoundError extends Error {
+  constructor(elementId: string) {
+    super(`Required element not found: ${elementId}`);
+    this.name = 'ElementNotFoundError';
+  }
+}
+
+class ElementTypeError extends Error {
+  constructor(elementId: string, expectedType: string) {
+    super(`Element ${elementId} is not of expected type: ${expectedType}`);
+    this.name = 'ElementTypeError';
+  }
+}
+
+class ExtensionError extends Error {
+  constructor(message: string, public readonly cause?: Error) {
+    super(message);
+    this.name = 'ExtensionError';
+  }
+}
+
 class PopupManager {
   private kindleEmailInput!: HTMLInputElement;
   private workerUrlInput!: HTMLInputElement;
@@ -21,29 +42,40 @@ class PopupManager {
   private pageUrlSpan!: HTMLSpanElement;
   private statusMessage!: HTMLDivElement;
 
-  async init() {
+  private getElement<T extends HTMLElement>(id: string, expectedType: new () => T): T {
+    const element = document.getElementById(id);
+    if (!element) {
+      throw new ElementNotFoundError(id);
+    }
+    if (!(element instanceof expectedType)) {
+      throw new ElementTypeError(id, expectedType.name);
+    }
+    return element;
+  }
+
+  async init(): Promise<void> {
     this.initializeElements();
     this.attachEventListeners();
     await this.loadConfiguration();
     await this.loadCurrentPageInfo();
   }
 
-  private initializeElements() {
-    this.kindleEmailInput = document.getElementById('kindle-email') as HTMLInputElement;
-    this.workerUrlInput = document.getElementById('worker-url') as HTMLInputElement;
-    this.saveConfigBtn = document.getElementById('save-config') as HTMLButtonElement;
-    this.sendPageBtn = document.getElementById('send-page') as HTMLButtonElement;
-    this.pageTitleSpan = document.getElementById('page-title') as HTMLSpanElement;
-    this.pageUrlSpan = document.getElementById('page-url') as HTMLSpanElement;
-    this.statusMessage = document.getElementById('status-message') as HTMLDivElement;
+  private initializeElements(): void {
+    this.kindleEmailInput = this.getElement('kindle-email', HTMLInputElement);
+    this.workerUrlInput = this.getElement('worker-url', HTMLInputElement);
+    this.saveConfigBtn = this.getElement('save-config', HTMLButtonElement);
+    this.sendPageBtn = this.getElement('send-page', HTMLButtonElement);
+    this.pageTitleSpan = this.getElement('page-title', HTMLSpanElement);
+    this.pageUrlSpan = this.getElement('page-url', HTMLSpanElement);
+    this.statusMessage = this.getElement('status-message', HTMLDivElement);
   }
 
-  private attachEventListeners() {
+  private attachEventListeners(): void {
     this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
     this.sendPageBtn.addEventListener('click', () => this.sendCurrentPage());
   }
 
-  private async loadConfiguration() {
+  private async loadConfiguration(): Promise<void> {
     try {
       const result = await chrome.storage.sync.get(['kindleEmail', 'workerUrl']);
       
@@ -61,7 +93,7 @@ class PopupManager {
     }
   }
 
-  private async saveConfiguration() {
+  private async saveConfiguration(): Promise<void> {
     const kindleEmail = this.kindleEmailInput.value.trim();
     const workerUrl = this.workerUrlInput.value.trim();
 
@@ -93,7 +125,7 @@ class PopupManager {
     }
   }
 
-  private async loadCurrentPageInfo() {
+  private async loadCurrentPageInfo(): Promise<void> {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
@@ -110,7 +142,7 @@ class PopupManager {
     }
   }
 
-  private async sendCurrentPage() {
+  private async sendCurrentPage(): Promise<void> {
     const config = await this.getConfiguration();
     
     if (!config) {
@@ -127,14 +159,14 @@ class PopupManager {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
       if (!tab.id) {
-        throw new Error('No active tab found');
+        throw new ExtensionError('No active tab found');
       }
 
       // Extract content from the page
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
       
       if (!response.success) {
-        throw new Error(response.error || 'Failed to extract page content');
+        throw new ExtensionError(response.error || 'Failed to extract page content');
       }
 
       const pageContent: PageContent = response.content;
@@ -196,14 +228,14 @@ class PopupManager {
     }
   }
 
-  private updateSendButtonState() {
+  private updateSendButtonState(): void {
     const hasEmail = this.kindleEmailInput.value.trim().length > 0;
     const hasWorkerUrl = this.workerUrlInput.value.trim().length > 0;
     
     this.sendPageBtn.disabled = !(hasEmail && hasWorkerUrl);
   }
 
-  private showStatus(message: string, type: 'success' | 'error' | 'info') {
+  private showStatus(message: string, type: 'success' | 'error' | 'info'): void {
     this.statusMessage.textContent = message;
     this.statusMessage.className = `status ${type}`;
     this.statusMessage.classList.remove('hidden');
