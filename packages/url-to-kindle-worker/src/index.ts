@@ -39,12 +39,19 @@ const isKindleRequest = (obj: unknown): obj is KindleRequest => {
 };
 
 const validateKindleRequest = (obj: unknown): KindleRequest => {
-  if (!isKindleRequest(obj)) {
+  if (typeof obj !== 'object' || obj === null) {
     throw new ValidationError('Invalid request format');
   }
 
-  if (!obj.url || !obj.kindleEmail) {
+  const record = obj as Record<string, unknown>;
+  
+  // Check for required fields first
+  if (!hasProperty(record, 'url') || !hasProperty(record, 'kindleEmail')) {
     throw new ValidationError('Missing required fields: url, kindleEmail');
+  }
+
+  if (!isKindleRequest(obj)) {
+    throw new ValidationError('Invalid request format');
   }
 
   // Validate URL format
