@@ -17,10 +17,12 @@ function extractPageContent() {
     '.share',
   ];
   const clonedDocument = document.cloneNode(true);
-  elementsToRemove.forEach((selector) => {
+  for (const selector of elementsToRemove) {
     const elements = clonedDocument.querySelectorAll(selector);
-    elements.forEach((el) => el.remove());
-  });
+    for (const el of elements) {
+      el.remove();
+    }
+  }
   // Try to find the main content area
   const contentSelectors = [
     'article',
@@ -53,10 +55,12 @@ function extractPageContent() {
       '.social-share',
       '.comments',
     ];
-    unwantedSelectors.forEach((selector) => {
+    for (const selector of unwantedSelectors) {
       const elements = contentElement.querySelectorAll(selector);
-      elements.forEach((el) => el.remove());
-    });
+      for (const el of elements) {
+        el.remove();
+      }
+    }
   }
   // Extract author information
   let author;
