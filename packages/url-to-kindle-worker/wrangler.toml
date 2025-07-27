@@ -8,4 +8,4 @@ compatibility_flags = ["nodejs_compat"]
 # RESEND_API_KEY will be set via wrangler secret
 
 [build]
-command = "npm run build:deployment"
+command = "cd ../.. && npx turbo build"
