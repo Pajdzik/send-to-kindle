@@ -133,7 +133,9 @@ export default {
         Effect.withConfigProvider(configProvider),
       );
 
-      const result = await Effect.runPromise(program);
+      const result = await Effect.runPromise(
+        program.pipe(Effect.catchAll(effect => Effect.die(effect)))
+      );
 
       return new Response(JSON.stringify(result), {
         status: 200,
