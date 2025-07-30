@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "npm run build:local",
+    "build": "npm run build:deps && npm run build:local",
+    "build:deps": "cd ../article-fetcher && npm run build && cd ../email-sender && npm run build && cd ../epub-converter && npm run build",
     "build:local": "tsc && npm run bundle",
     "bundle": "esbuild dist/index.js --bundle --format=esm --platform=node --outfile=dist/index.bundled.js --external:cloudflare:workers --main-fields=main,module",
     "build:validate": "npx wrangler deploy --dry-run",
