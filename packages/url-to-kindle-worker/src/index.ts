@@ -134,7 +134,9 @@ export default {
       );
 
       const result = await Effect.runPromise(
-        program.pipe(Effect.catchAll(effect => Effect.die(effect)))
+        program.pipe(
+          Effect.catchAll(error => Effect.fail(error))
+        )
       );
 
       return new Response(JSON.stringify(result), {
