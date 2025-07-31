@@ -1,5 +1,5 @@
 import { Effect, Array as EffectArray, Option, pipe } from 'effect';
-import { JSDOM } from 'jsdom';
+import { parseHTML } from 'linkedom';
 
 export interface ArticleContent {
   readonly title: string;
@@ -97,7 +97,7 @@ const validateHtml = (html: string): Effect.Effect<string, Error> =>
   });
 
 const createDocument = (html: string): Effect.Effect<DOMDocument, Error> =>
-  Effect.try(() => new JSDOM(html).window.document);
+  Effect.try(() => parseHTML(html).document);
 
 const extractContent = (html: string): Effect.Effect<ArticleContent, Error> =>
   pipe(
@@ -336,9 +336,8 @@ const extractAllTextFromElement = (element: DOMElement | null): string =>
   );
 
 const cleanText = (text: string): string => {
-  const tempElement = new JSDOM('<div></div>').window.document.createElement(
-    'div',
-  );
+  const { document } = parseHTML('<div></div>');
+  const tempElement = document.createElement('div');
   tempElement.innerHTML = text;
   const decoded = tempElement.textContent || tempElement.innerText || '';
   return decoded.replace(/\s+/g, ' ').trim();
