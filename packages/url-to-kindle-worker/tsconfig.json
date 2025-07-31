@@ -7,9 +7,9 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "article-fetcher": ["../article-fetcher/src/index"],
-      "email-sender": ["../email-sender/src/index"],
-      "epub-converter": ["../epub-converter/src/index"]
+      "article-fetcher": ["../article-fetcher/dist/index"],
+      "email-sender": ["../email-sender/dist/index"],
+      "epub-converter": ["../epub-converter/dist/index"]
     }
   },
   "include": ["src/**/*"],
