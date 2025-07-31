@@ -8,4 +8,4 @@ compatibility_flags = ["nodejs_compat"]
 # RESEND_API_KEY will be set via wrangler secret
 
 [build]
-command = "cd ../.. && npx turbo run build --filter=url-to-kindle-worker"
+command = "npm run build:local"
