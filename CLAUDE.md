@@ -22,23 +22,21 @@ The `epub-converter` package converts HTML content to EPUB format. It provides a
 Usage:
 ```typescript
 import { convertToEpub } from 'epub-converter';
-import { Effect } from 'effect';
 
-const epubBuffer = await Effect.runPromise(convertToEpub(htmlContent, {
+const epubBuffer = await convertToEpub(htmlContent, {
   title: 'Article Title',
   author: 'Author Name',
   language: 'en'
-}));
+});
 ```
 
 ### email-sender Package
 
-The `email-sender` package handles email delivery functionality using Resend API. It provides an Effect-based EmailSender service that can send emails with attachments. The package uses dependency injection through Effect's Context system.
+The `email-sender` package handles email delivery functionality using Resend API. It provides an EmailSender service that can send emails with attachments.
 
 Usage:
 ```typescript
-import { EmailSender, EmailSenderLive, type EmailMessage } from 'email-sender';
-import { Effect } from 'effect';
+import { createEmailSender, type EmailMessage } from 'email-sender';
 
 const message: EmailMessage = {
   from: 'sender@example.com',
@@ -48,12 +46,8 @@ const message: EmailMessage = {
   attachments: [{ filename: 'file.pdf', content: buffer }]
 };
 
-const program = Effect.gen(function* () {
-  const emailSender = yield* EmailSender;
-  yield* emailSender.send(message);
-});
-
-await Effect.runPromise(program.pipe(Effect.provide(EmailSenderLive)));
+const emailSender = createEmailSender(apiKey);
+await emailSender.send(message);
 ```
 
 ### browser-extension Package
@@ -130,7 +124,6 @@ For the Browser Extension (`packages/browser-extension/`):
 - **Vitest**: Testing framework with coverage reporting
 - **Turbo**: Build system for monorepo orchestration
 - **Wrangler**: Cloudflare Workers CLI for development and deployment
-- **Effect**: Functional programming library for composable, type-safe error handling
 
 ## Development Workflow
 
@@ -149,6 +142,6 @@ All three must pass before considering changes complete. If any fail, fix the is
 - Composite builds enabled for fast incremental compilation
 - Test files use `.test.ts` extensions and are located in separate `tests/` directories within each package
 - Import statements use `.js` extensions for proper ESM resolution
-- Effect library used throughout for functional programming patterns and error handling
+- Standard Promise-based async/await patterns for error handling
 - Cloudflare Worker uses workspace dependencies for shared functionality
 - Email delivery handled through Resend API with proper attachment support for EPUB files

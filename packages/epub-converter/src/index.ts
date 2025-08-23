@@ -1,4 +1,3 @@
-import { Effect } from 'effect';
 import JSZip from 'jszip';
 
 export interface EpubOptions {
@@ -11,61 +10,61 @@ export interface EpubOptions {
   date?: string;
 }
 
-export const convertToEpub = (
+export const convertToEpub = async (
   htmlContent: string,
   options: EpubOptions,
-): Effect.Effect<Uint8Array, Error> =>
-  Effect.tryPromise({
-    try: async () => {
-      const zip = new JSZip();
+): Promise<Uint8Array> => {
+  try {
+    const zip = new JSZip();
 
-      // Create mimetype file (must be first and uncompressed)
-      zip.file('mimetype', 'application/epub+zip');
+    // Create mimetype file (must be first and uncompressed)
+    zip.file('mimetype', 'application/epub+zip');
 
-      // Create META-INF directory
-      const metaInf = zip.folder('META-INF');
-      if (!metaInf) throw new Error('Failed to create META-INF folder');
+    // Create META-INF directory
+    const metaInf = zip.folder('META-INF');
+    if (!metaInf) throw new Error('Failed to create META-INF folder');
 
-      // Create container.xml
-      const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
+    // Create container.xml
+    const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
   <rootfiles>
     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
 </container>`;
-      metaInf.file('container.xml', containerXml);
+    metaInf.file('container.xml', containerXml);
 
-      // Create OEBPS directory
-      const oebps = zip.folder('OEBPS');
-      if (!oebps) throw new Error('Failed to create OEBPS folder');
+    // Create OEBPS directory
+    const oebps = zip.folder('OEBPS');
+    if (!oebps) throw new Error('Failed to create OEBPS folder');
 
-      // Create content.opf (package document)
-      const contentOpf = createContentOpf(options);
-      oebps.file('content.opf', contentOpf);
+    // Create content.opf (package document)
+    const contentOpf = createContentOpf(options);
+    oebps.file('content.opf', contentOpf);
 
-      // Create toc.ncx (navigation control file)
-      const tocNcx = createTocNcx(options);
-      oebps.file('toc.ncx', tocNcx);
+    // Create toc.ncx (navigation control file)
+    const tocNcx = createTocNcx(options);
+    oebps.file('toc.ncx', tocNcx);
 
-      // Create the main HTML file
-      const mainHtml = createMainHtml(htmlContent, options);
-      oebps.file('chapter.xhtml', mainHtml);
+    // Create the main HTML file
+    const mainHtml = createMainHtml(htmlContent, options);
+    oebps.file('chapter.xhtml', mainHtml);
 
-      // Create basic CSS
-      const css = createBasicCss();
-      oebps.file('style.css', css);
+    // Create basic CSS
+    const css = createBasicCss();
+    oebps.file('style.css', css);
 
-      // Generate the EPUB file
-      const epubBuffer = await zip.generateAsync({
-        type: 'uint8array',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 9 },
-      });
+    // Generate the EPUB file
+    const epubBuffer = await zip.generateAsync({
+      type: 'uint8array',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+    });
 
-      return epubBuffer;
-    },
-    catch: (error) => new Error(`Failed to create EPUB: ${error}`),
-  });
+    return epubBuffer;
+  } catch (error) {
+    throw new Error(`Failed to create EPUB: ${error}`);
+  }
+};
 
 function createContentOpf(options: EpubOptions): string {
   const identifier = options.identifier || `urn:uuid:${generateUUID()}`;

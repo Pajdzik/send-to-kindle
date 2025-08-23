@@ -1,9 +1,7 @@
-import { Config, ConfigProvider, Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 import {
   type EmailMessage,
-  EmailSender,
-  EmailSenderLive,
+  createEmailSender,
   makeEmailSender,
 } from '../src/sender.js';
 
@@ -30,8 +28,7 @@ describe('EmailSender', () => {
       text: 'Test body',
     };
 
-    const result = await Effect.runPromise(sender.send(message));
-    expect(result).toBeUndefined();
+    await sender.send(message);
   });
 
   it('should handle send errors', async () => {
@@ -47,7 +44,7 @@ describe('EmailSender', () => {
       text: 'Test body',
     };
 
-    await expect(Effect.runPromise(sender.send(message))).rejects.toThrow(
+    await expect(sender.send(message)).rejects.toThrow(
       'Failed to send email: Error: Send failed',
     );
   });
@@ -67,18 +64,7 @@ describe('EmailSender', () => {
       ],
     };
 
-    const configProvider = ConfigProvider.fromMap(
-      new Map([['RESEND_API_KEY', 'test-api-key']]),
-    );
-
-    const program = Effect.gen(function* () {
-      const sender = yield* EmailSender;
-      yield* sender.send(message);
-    }).pipe(
-      Effect.provide(EmailSenderLive),
-      Effect.withConfigProvider(configProvider),
-    );
-
-    await expect(Effect.runPromise(program)).resolves.toBeUndefined();
+    const sender = createEmailSender('test-api-key');
+    await expect(sender.send(message)).resolves.toBeUndefined();
   });
 });

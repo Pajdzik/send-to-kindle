@@ -1,19 +1,22 @@
-import { Effect } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 import { convertUrlToEpub } from '../src/converter.js';
 import type { ConversionOptions } from '../src/converter.js';
 
 // Mock the dependencies
 vi.mock('article-fetcher', () => ({
-  fetchAndExtractArticle: vi.fn(),
+  fetchAndExtractArticle: vi.fn().mockResolvedValue({
+    title: 'Test Article',
+    content: '<p>Test content</p>',
+    author: 'Test Author',
+  }),
 }));
 
 vi.mock('epub-converter', () => ({
-  convertToEpub: vi.fn(),
+  convertToEpub: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
 }));
 
 vi.mock('node:fs/promises', () => ({
-  writeFile: vi.fn(),
+  writeFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('URL to EPUB Converter', () => {
@@ -22,14 +25,14 @@ describe('URL to EPUB Converter', () => {
     expect(typeof convertUrlToEpub).toBe('function');
   });
 
-  it('should return an Effect when called with valid options', () => {
+  it('should return a Promise when called with valid options', () => {
     const options: ConversionOptions = {
       url: 'https://example.com/article',
       outputPath: '/tmp/test.epub',
     };
 
     const result = convertUrlToEpub(options);
-    expect(Effect.isEffect(result)).toBe(true);
+    expect(result).toBeInstanceOf(Promise);
   });
 
   it('should accept all required and optional parameters', () => {
@@ -43,6 +46,6 @@ describe('URL to EPUB Converter', () => {
     };
 
     const result = convertUrlToEpub(options);
-    expect(Effect.isEffect(result)).toBe(true);
+    expect(result).toBeInstanceOf(Promise);
   });
 });

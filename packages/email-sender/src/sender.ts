@@ -1,4 +1,3 @@
-import { Config, Context, Effect, Layer } from 'effect';
 import { type CreateEmailOptions, Resend } from 'resend';
 
 export class EmailSendError extends Error {
@@ -25,60 +24,53 @@ export interface EmailMessage {
 }
 
 export interface EmailSender {
-  send: (message: EmailMessage) => Effect.Effect<void, Error>;
+  send: (message: EmailMessage) => Promise<void>;
 }
-
-export const EmailSender = Context.GenericTag<EmailSender>(
-  '@email-sender/EmailSender',
-);
 
 export const makeEmailSender = (
   sendFn: (message: EmailMessage) => Promise<void>,
 ): EmailSender => ({
-  send: (message: EmailMessage) =>
-    Effect.tryPromise({
-      try: () => sendFn(message),
-      catch: (error) =>
-        new EmailSendError(
-          `Failed to send email: ${error}`,
-          error instanceof Error ? error : undefined,
-        ),
-    }),
+  send: async (message: EmailMessage) => {
+    try {
+      await sendFn(message);
+    } catch (error) {
+      throw new EmailSendError(
+        `Failed to send email: ${error}`,
+        error instanceof Error ? error : undefined,
+      );
+    }
+  },
 });
 
-export const EmailSenderLive = Layer.effect(
-  EmailSender,
-  Effect.gen(function* () {
-    const apiKey = yield* Config.string('RESEND_API_KEY');
-    const resend = new Resend(apiKey);
+export const createEmailSender = (apiKey: string): EmailSender => {
+  const resend = new Resend(apiKey);
 
-    const sendFn = async (message: EmailMessage) => {
-      const emailData: CreateEmailOptions = {
-        from: message.from,
-        to: message.to,
-        subject: message.subject,
-        ...(message.html
-          ? { html: message.html }
-          : { text: message.text || '' }),
-      };
-
-      if (message.attachments) {
-        emailData.attachments = message.attachments.map((att) => ({
-          filename: att.filename,
-          content:
-            att.content instanceof Buffer
-              ? att.content
-              : Buffer.from(att.content),
-          type: att.contentType,
-        }));
-      }
-
-      const { error } = await resend.emails.send(emailData);
-      if (error) {
-        throw new EmailSendError(`Resend API error: ${error.message}`);
-      }
+  const sendFn = async (message: EmailMessage) => {
+    const emailData: CreateEmailOptions = {
+      from: message.from,
+      to: message.to,
+      subject: message.subject,
+      ...(message.html
+        ? { html: message.html }
+        : { text: message.text || '' }),
     };
 
-    return makeEmailSender(sendFn);
-  }),
-);
+    if (message.attachments) {
+      emailData.attachments = message.attachments.map((att) => ({
+        filename: att.filename,
+        content:
+          att.content instanceof Buffer
+            ? att.content
+            : Buffer.from(att.content),
+        type: att.contentType,
+      }));
+    }
+
+    const { error } = await resend.emails.send(emailData);
+    if (error) {
+      throw new EmailSendError(`Resend API error: ${error.message}`);
+    }
+  };
+
+  return makeEmailSender(sendFn);
+};

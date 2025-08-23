@@ -1,4 +1,3 @@
-import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 import { type EpubOptions, convertToEpub } from '../src/index.js';
 
@@ -13,7 +12,7 @@ describe('EPUB Converter', () => {
       description: 'A test article for EPUB conversion',
     };
 
-    const result = await Effect.runPromise(convertToEpub(htmlContent, options));
+    const result = await convertToEpub(htmlContent, options);
 
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
@@ -25,7 +24,7 @@ describe('EPUB Converter', () => {
       title: 'Minimal Test',
     };
 
-    const result = await Effect.runPromise(convertToEpub(htmlContent, options));
+    const result = await convertToEpub(htmlContent, options);
 
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
@@ -37,7 +36,7 @@ describe('EPUB Converter', () => {
       title: 'Empty Content Test',
     };
 
-    const result = await Effect.runPromise(convertToEpub(htmlContent, options));
+    const result = await convertToEpub(htmlContent, options);
 
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
@@ -51,7 +50,7 @@ describe('EPUB Converter', () => {
       author: 'Author with "special" characters',
     };
 
-    const result = await Effect.runPromise(convertToEpub(htmlContent, options));
+    const result = await convertToEpub(htmlContent, options);
 
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);

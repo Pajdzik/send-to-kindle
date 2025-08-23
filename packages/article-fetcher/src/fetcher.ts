@@ -1,4 +1,3 @@
-import { Effect, Array as EffectArray, Option, pipe } from 'effect';
 import { parseHTML } from 'linkedom';
 
 export interface ArticleContent {
@@ -84,116 +83,100 @@ type DOMDocument = Document;
 type DOMElement = Element;
 
 interface ExtractedMetadata {
-  readonly author: Option.Option<string>;
-  readonly publishedDate: Option.Option<string>;
+  readonly author?: string;
+  readonly publishedDate?: string;
 }
 
-const validateHtml = (html: string): Effect.Effect<string, Error> =>
-  Effect.gen(function* () {
-    if (typeof html !== 'string') {
-      yield* Effect.fail(new Error('Invalid HTML input: must be a string'));
-    }
-    return html;
-  });
+const validateHtml = (html: string): string => {
+  if (typeof html !== 'string') {
+    throw new Error('Invalid HTML input: must be a string');
+  }
+  return html;
+};
 
-const createDocument = (html: string): Effect.Effect<DOMDocument, Error> =>
-  Effect.try(() => parseHTML(html).document);
+const createDocument = (html: string): DOMDocument => {
+  try {
+    return parseHTML(html).document;
+  } catch (error) {
+    throw new Error(`Failed to parse HTML: ${error}`);
+  }
+};
 
-const extractContent = (html: string): Effect.Effect<ArticleContent, Error> =>
-  pipe(
-    validateHtml(html),
-    Effect.flatMap((validHtml) => {
-      if (!validHtml.trim()) {
-        return Effect.succeed({
-          title: '',
-          content: '',
-          author: undefined,
-          publishedDate: undefined,
-        });
-      }
-      return pipe(
-        createDocument(validHtml),
-        Effect.flatMap((document) =>
-          Effect.all({
-            title: extractTitle(document),
-            metadata: extractMetadata(document),
-            content: extractMainContent(document),
-          }),
-        ),
-        Effect.map(({ title, metadata, content }) => ({
-          title,
-          content,
-          author: Option.getOrUndefined(metadata.author),
-          publishedDate: Option.getOrUndefined(metadata.publishedDate),
-        })),
-      );
-    }),
-  );
+const extractContent = (html: string): ArticleContent => {
+  const validHtml = validateHtml(html);
+  
+  if (!validHtml.trim()) {
+    return {
+      title: '',
+      content: '',
+      author: undefined,
+      publishedDate: undefined,
+    };
+  }
 
-const extractTitle = (document: DOMDocument): Effect.Effect<string, never> =>
-  pipe(
-    Option.fromNullable(document.querySelector('title')),
-    Option.map((element) => element.textContent?.trim() || ''),
-    Option.filter((text) => text.length > 0),
-    Option.orElse(() =>
-      pipe(
-        Option.fromNullable(document.querySelector('h1')),
-        Option.map((element) => element.textContent?.trim() || ''),
-        Option.filter((text) => text.length > 0),
-      ),
-    ),
-    Option.getOrElse(() => ''),
-    cleanText,
-    Effect.succeed,
-  );
+  const document = createDocument(validHtml);
+  const title = extractTitle(document);
+  const metadata = extractMetadata(document);
+  const content = extractMainContent(document);
 
-const extractMetadata = (
-  document: DOMDocument,
-): Effect.Effect<ExtractedMetadata, never> =>
-  Effect.all({
+  return {
+    title,
+    content,
+    author: metadata.author,
+    publishedDate: metadata.publishedDate,
+  };
+};
+
+const extractTitle = (document: DOMDocument): string => {
+  const titleElement = document.querySelector('title');
+  if (titleElement?.textContent?.trim()) {
+    return cleanText(titleElement.textContent.trim());
+  }
+
+  const h1Element = document.querySelector('h1');
+  if (h1Element?.textContent?.trim()) {
+    return cleanText(h1Element.textContent.trim());
+  }
+
+  return '';
+};
+
+const extractMetadata = (document: DOMDocument): ExtractedMetadata => {
+  return {
     author: extractMetaContent(document, AUTHOR_SELECTORS),
     publishedDate: extractMetaContent(document, DATE_SELECTORS),
-  });
+  };
+};
 
 const extractMetaContent = (
   document: DOMDocument,
   selectors: readonly string[],
-): Effect.Effect<Option.Option<string>, never> =>
-  pipe(
-    EffectArray.fromIterable(selectors),
-    EffectArray.map((selector: string) =>
-      pipe(
-        Option.fromNullable(document.querySelector(selector)),
-        Option.flatMap((element) =>
-          Option.fromNullable(element.getAttribute('content')),
-        ),
-        Option.map((content: string) => content.trim()),
-        Option.filter((content: string) => content.length > 0),
-      ),
-    ),
-    EffectArray.findFirst(Option.isSome),
-    Option.flatten,
-    Effect.succeed,
-  );
+): string | undefined => {
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    const content = element?.getAttribute('content')?.trim();
+    if (content && content.length > 0) {
+      return content;
+    }
+  }
+  return undefined;
+};
 
-const extractMainContent = (
-  document: DOMDocument,
-): Effect.Effect<string, never> =>
-  pipe(
-    removeUnwantedElements(document),
-    Effect.flatMap(() => findContentBySelectors(document, CONTENT_SELECTORS)),
-    Effect.flatMap((contentOpt) =>
-      Option.isSome(contentOpt)
-        ? Effect.succeed(contentOpt.value)
-        : extractContentFallback(document),
-    ),
-  );
+const extractMainContent = (document: DOMDocument): string => {
+  removeUnwantedElements(document);
+  
+  const contentOpt = findContentBySelectors(document, CONTENT_SELECTORS);
+  if (contentOpt) {
+    return contentOpt;
+  }
+  
+  return extractContentFallback(document);
+};
 
 const findTitleH1BeforeContent = (
   document: DOMDocument,
   contentElement: Element,
 ): string | null => {
-  // Look for h1 elements with common title classes
   const titleSelectors = [
     'h1.title',
     'h1.entry-title',
@@ -205,10 +188,7 @@ const findTitleH1BeforeContent = (
   for (const selector of titleSelectors) {
     const titleElement = document.querySelector(selector);
     if (titleElement) {
-      // Check if this h1 is before the content element in DOM order
-      const titlePosition =
-        titleElement.compareDocumentPosition(contentElement);
-      // DOCUMENT_POSITION_FOLLOWING = 4
+      const titlePosition = titleElement.compareDocumentPosition(contentElement);
       if (titlePosition & 4) {
         return titleElement.textContent?.trim() || null;
       }
@@ -221,103 +201,73 @@ const findTitleH1BeforeContent = (
 const findContentBySelectors = (
   document: DOMDocument,
   selectors: readonly string[],
-): Effect.Effect<Option.Option<string>, never> =>
-  pipe(
-    EffectArray.fromIterable(selectors),
-    EffectArray.map((selector: string) =>
-      pipe(
-        Option.fromNullable(document.querySelector(selector)),
-        Option.map((element) => {
-          // Check if there's a title h1 element before the main content
-          const titleH1 = findTitleH1BeforeContent(document, element);
-          const contentHtml = preserveFormattingInElement(element);
+): string | null => {
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      const titleH1 = findTitleH1BeforeContent(document, element);
+      const contentHtml = preserveFormattingInElement(element);
 
-          // If we found a title h1, prepend it to the content
-          if (titleH1) {
-            return `<h1>${titleH1}</h1>${contentHtml}`;
-          }
-          return contentHtml;
-        }),
-      ),
-    ),
-    EffectArray.findFirst(Option.isSome),
-    Option.flatten,
-    Effect.succeed,
-  );
+      if (titleH1) {
+        return `<h1>${titleH1}</h1>${contentHtml}`;
+      }
+      return contentHtml;
+    }
+  }
+  return null;
+};
 
-const extractContentFallback = (
-  document: DOMDocument,
-): Effect.Effect<string, never> =>
-  pipe(
-    Effect.all({
-      paragraphs: extractElementsText(document, 'p', MIN_PARAGRAPH_LENGTH),
-      headings: extractElementsText(document, 'h1, h2, h3, h4, h5, h6', 0),
-    }),
-    Effect.map(({ paragraphs, headings }) => {
-      const allContent = [...headings, ...paragraphs];
-      return allContent.length > 0
-        ? allContent.join(' ')
-        : extractAllTextFromElement(document.body);
-    }),
-  );
+const extractContentFallback = (document: DOMDocument): string => {
+  const paragraphs = extractElementsText(document, 'p', MIN_PARAGRAPH_LENGTH);
+  const headings = extractElementsText(document, 'h1, h2, h3, h4, h5, h6', 0);
+  
+  const allContent = [...headings, ...paragraphs];
+  return allContent.length > 0
+    ? allContent.join(' ')
+    : extractAllTextFromElement(document.body);
+};
 
 const extractElementsText = (
   document: DOMDocument,
   selector: string,
   minLength: number,
-): Effect.Effect<ReadonlyArray<string>, never> =>
-  pipe(
-    EffectArray.fromIterable(document.querySelectorAll(selector)),
-    EffectArray.map((element: Element) => preserveFormattingInElement(element)),
-    EffectArray.filter((text: string) => text.length > minLength),
-    Effect.succeed,
-  );
+): string[] => {
+  const elements = Array.from(document.querySelectorAll(selector));
+  return elements
+    .map((element) => preserveFormattingInElement(element))
+    .filter((text) => text.length > minLength);
+};
 
-const removeUnwantedElements = (
-  document: DOMDocument,
-): Effect.Effect<void, never> =>
-  pipe(
-    Effect.all([
-      removeElementsBySelectors(document, UNWANTED_SELECTORS),
-      removeElementsByClasses(document, UNWANTED_CLASSES),
-    ]),
-    Effect.map(() => void 0),
-  );
+const removeUnwantedElements = (document: DOMDocument): void => {
+  removeElementsBySelectors(document, UNWANTED_SELECTORS);
+  removeElementsByClasses(document, UNWANTED_CLASSES);
+};
 
 const removeElementsBySelectors = (
   document: DOMDocument,
   selectors: readonly string[],
-): Effect.Effect<void, never> =>
-  pipe(
-    EffectArray.fromIterable(selectors),
-    EffectArray.map((selector: string) =>
-      pipe(
-        EffectArray.fromIterable(document.querySelectorAll(selector)),
-        EffectArray.map((element: Element) => element.remove()),
-      ),
-    ),
-    Effect.succeed,
-    Effect.map(() => void 0),
-  );
+): void => {
+  for (const selector of selectors) {
+    const elements = Array.from(document.querySelectorAll(selector));
+    for (const element of elements) {
+      element.remove();
+    }
+  }
+};
 
 const removeElementsByClasses = (
   document: DOMDocument,
   classes: readonly string[],
-): Effect.Effect<void, never> =>
-  pipe(
-    EffectArray.fromIterable(classes),
-    EffectArray.map((className: string) =>
-      pipe(
-        EffectArray.fromIterable(document.querySelectorAll(`.${className}`)),
-        EffectArray.map((element: Element) => element.remove()),
-      ),
-    ),
-    Effect.succeed,
-    Effect.map(() => void 0),
-  );
+): void => {
+  for (const className of classes) {
+    const elements = Array.from(document.querySelectorAll(`.${className}`));
+    for (const element of elements) {
+      element.remove();
+    }
+  }
+};
 
 const preserveFormattingInElement = (element: Element): string => {
-  // Remove unwanted child elements while preserving formatting
   const unwantedChildren = element.querySelectorAll(
     `${UNWANTED_SELECTORS.join(', ')}, ${UNWANTED_CLASSES.map((cls) => `.${cls}`).join(', ')}`,
   );
@@ -328,12 +278,10 @@ const preserveFormattingInElement = (element: Element): string => {
   return element.innerHTML.trim();
 };
 
-const extractAllTextFromElement = (element: DOMElement | null): string =>
-  pipe(
-    Option.fromNullable(element),
-    Option.map((el) => preserveFormattingInElement(el)),
-    Option.getOrElse(() => ''),
-  );
+const extractAllTextFromElement = (element: DOMElement | null): string => {
+  if (!element) return '';
+  return preserveFormattingInElement(element);
+};
 
 const cleanText = (text: string): string => {
   const { document } = parseHTML('<div></div>');
@@ -344,35 +292,33 @@ const cleanText = (text: string): string => {
 };
 
 export const fetchArticle = async (url: string): Promise<string> => {
-  const result = await Effect.runPromise(
-    Effect.tryPromise({
-      try: async () => {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new ArticleFetchError(
-            `Failed to fetch article: ${response.status} ${response.statusText}`,
-            response.status,
-          );
-        }
-        return response.text();
-      },
-      catch: (error) =>
-        new Error(
-          `Network error: ${error instanceof Error ? error.message : String(error)}`,
-        ),
-    }),
-  );
-  return result;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new ArticleFetchError(
+        `Failed to fetch article: ${response.status} ${response.statusText}`,
+        response.status,
+      );
+    }
+    return response.text();
+  } catch (error) {
+    if (error instanceof ArticleFetchError) {
+      throw error;
+    }
+    throw new Error(
+      `Network error: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 };
 
 export const extractArticleContent = async (
   html: string,
 ): Promise<ArticleContent> => {
-  return Effect.runPromise(extractContent(html));
+  return extractContent(html);
 };
 
 export const extractArticleContentSync = (html: string): ArticleContent => {
-  return Effect.runSync(extractContent(html));
+  return extractContent(html);
 };
 
 export const fetchAndExtractArticle = async (
@@ -381,7 +327,3 @@ export const fetchAndExtractArticle = async (
   const html = await fetchArticle(url);
   return extractArticleContent(html);
 };
-
-export const extractArticleContentEffect = (
-  html: string,
-): Effect.Effect<ArticleContent, Error> => extractContent(html);

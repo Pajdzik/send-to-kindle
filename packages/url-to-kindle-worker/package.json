@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "article-fetcher": "file:../article-fetcher",
-    "effect": "^3.16.12",
     "email-sender": "file:../email-sender",
     "epub-converter": "file:../epub-converter"
   },

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { Effect } from 'effect';
 import { convertUrlToEpub } from './converter.js';
 import type { ConversionOptions } from './converter.js';
 
@@ -97,10 +96,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const program = convertUrlToEpub(options);
-
   try {
-    await Effect.runPromise(program);
+    await convertUrlToEpub(options);
     console.log('🎉 Conversion completed successfully!');
   } catch (error) {
     console.error('❌ Conversion failed:', error);

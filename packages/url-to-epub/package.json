@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "article-fetcher": "file:../article-fetcher",
-    "epub-converter": "file:../epub-converter",
-    "effect": "^3.16.12"
+    "epub-converter": "file:../epub-converter"
   }
 }
