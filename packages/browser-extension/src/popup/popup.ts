@@ -41,9 +41,23 @@ class PopupManager {
   private workerUrlInput!: HTMLInputElement;
   private saveConfigBtn!: HTMLButtonElement;
   private sendPageBtn!: HTMLButtonElement;
+  private previewArticleBtn!: HTMLButtonElement;
   private pageTitleSpan!: HTMLSpanElement;
   private pageUrlSpan!: HTMLSpanElement;
   private statusMessage!: HTMLDivElement;
+  
+  // Preview elements
+  private previewSection!: HTMLDivElement;
+  private closePreviewBtn!: HTMLButtonElement;
+  private previewLoading!: HTMLDivElement;
+  private previewArticleContent!: HTMLDivElement;
+  private previewError!: HTMLDivElement;
+  private previewTitle!: HTMLHeadingElement;
+  private previewAuthor!: HTMLParagraphElement;
+  private previewWordCount!: HTMLParagraphElement;
+  private previewBody!: HTMLDivElement;
+  
+  private cachedPageContent: PageContent | null = null;
 
   private getElement<T extends HTMLElement>(
     id: string,
@@ -71,9 +85,21 @@ class PopupManager {
     this.workerUrlInput = this.getElement('worker-url', HTMLInputElement);
     this.saveConfigBtn = this.getElement('save-config', HTMLButtonElement);
     this.sendPageBtn = this.getElement('send-page', HTMLButtonElement);
+    this.previewArticleBtn = this.getElement('preview-article', HTMLButtonElement);
     this.pageTitleSpan = this.getElement('page-title', HTMLSpanElement);
     this.pageUrlSpan = this.getElement('page-url', HTMLSpanElement);
     this.statusMessage = this.getElement('status-message', HTMLDivElement);
+    
+    // Preview elements
+    this.previewSection = this.getElement('preview-section', HTMLDivElement);
+    this.closePreviewBtn = this.getElement('close-preview', HTMLButtonElement);
+    this.previewLoading = this.getElement('preview-loading', HTMLDivElement);
+    this.previewArticleContent = this.getElement('preview-article-content', HTMLDivElement);
+    this.previewError = this.getElement('preview-error', HTMLDivElement);
+    this.previewTitle = this.getElement('preview-title', HTMLHeadingElement);
+    this.previewAuthor = this.getElement('preview-author', HTMLParagraphElement);
+    this.previewWordCount = this.getElement('preview-word-count', HTMLParagraphElement);
+    this.previewBody = this.getElement('preview-body', HTMLDivElement);
   }
 
   private attachEventListeners(): void {
@@ -81,6 +107,8 @@ class PopupManager {
       this.saveConfiguration(),
     );
     this.sendPageBtn.addEventListener('click', () => this.sendCurrentPage());
+    this.previewArticleBtn.addEventListener('click', () => this.showPreview());
+    this.closePreviewBtn.addEventListener('click', () => this.hidePreview());
   }
 
   private async loadConfiguration(): Promise<void> {
@@ -172,28 +200,12 @@ class PopupManager {
     this.showStatus('Extracting page content...', 'info');
 
     try {
-      // Get current tab
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-
-      if (!tab.id) {
-        throw new ExtensionError('No active tab found');
+      let pageContent = this.cachedPageContent;
+      
+      if (!pageContent) {
+        // Extract content from the page
+        pageContent = await this.extractPageContent();
       }
-
-      // Extract content from the page
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        action: 'extractContent',
-      });
-
-      if (!response.success) {
-        throw new ExtensionError(
-          response.error || 'Failed to extract page content',
-        );
-      }
-
-      const pageContent: PageContent = response.content;
 
       this.showStatus('Sending to Kindle...', 'info');
 
@@ -209,6 +221,126 @@ class PopupManager {
       this.sendPageBtn.disabled = false;
       this.sendPageBtn.textContent = 'Send to Kindle';
     }
+  }
+
+  private async showPreview(): Promise<void> {
+    // Show preview section
+    this.previewSection.classList.remove('hidden');
+    
+    // Show loading state
+    this.showPreviewLoading();
+    
+    try {
+      // Extract content if not cached
+      if (!this.cachedPageContent) {
+        this.cachedPageContent = await this.extractPageContent();
+      }
+      
+      this.displayPreviewContent(this.cachedPageContent);
+    } catch (error) {
+      this.showPreviewError();
+    }
+  }
+
+  private hidePreview(): void {
+    this.previewSection.classList.add('hidden');
+  }
+
+  private async extractPageContent(): Promise<PageContent> {
+    // Get current tab
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab.id) {
+      throw new ExtensionError('No active tab found');
+    }
+
+    // Extract content from the page
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      action: 'extractContent',
+    });
+
+    if (!response.success) {
+      throw new ExtensionError(
+        response.error || 'Failed to extract page content',
+      );
+    }
+
+    return response.content;
+  }
+
+  private showPreviewLoading(): void {
+    this.previewLoading.classList.remove('hidden');
+    this.previewArticleContent.classList.add('hidden');
+    this.previewError.classList.add('hidden');
+  }
+
+  private showPreviewError(): void {
+    this.previewLoading.classList.add('hidden');
+    this.previewArticleContent.classList.add('hidden');
+    this.previewError.classList.remove('hidden');
+  }
+
+  private displayPreviewContent(content: PageContent): void {
+    // Hide loading and error states
+    this.previewLoading.classList.add('hidden');
+    this.previewError.classList.add('hidden');
+    
+    // Show article content
+    this.previewArticleContent.classList.remove('hidden');
+    
+    // Set title
+    this.previewTitle.textContent = content.title;
+    
+    // Set author if available
+    if (content.author) {
+      const authorSpan = this.previewAuthor.querySelector('span');
+      if (authorSpan) {
+        authorSpan.textContent = content.author;
+        this.previewAuthor.classList.remove('hidden');
+      }
+    } else {
+      this.previewAuthor.classList.add('hidden');
+    }
+    
+    // Calculate and display word count
+    const wordCount = this.calculateWordCount(content.content);
+    const wordCountSpan = this.previewWordCount.querySelector('span');
+    if (wordCountSpan) {
+      wordCountSpan.textContent = wordCount.toString();
+    }
+    
+    // Set content
+    this.previewBody.innerHTML = this.sanitizeContent(content.content);
+  }
+
+  private calculateWordCount(htmlContent: string): number {
+    // Create a temporary element to extract text content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+    
+    // Split by whitespace and filter out empty strings
+    const words = textContent.trim().split(/\s+/).filter(word => word.length > 0);
+    
+    return words.length;
+  }
+
+  private sanitizeContent(htmlContent: string): string {
+    // Create a temporary element to sanitize content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    // Remove potentially problematic elements
+    const elementsToRemove = tempDiv.querySelectorAll('script, style, iframe, object, embed');
+    for (const element of Array.from(elementsToRemove)) {
+      element.remove();
+    }
+    
+    return tempDiv.innerHTML;
   }
 
   private async sendToWorker(config: ExtensionConfig, content: PageContent) {

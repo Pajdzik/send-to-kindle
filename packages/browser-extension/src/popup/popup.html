@@ -32,7 +32,41 @@
         <p><strong>Title:</strong> <span id="page-title">Loading...</span></p>
         <p><strong>URL:</strong> <span id="page-url">Loading...</span></p>
       </div>
-      <button id="send-page" class="btn btn-primary">Send to Kindle</button>
+      
+      <div class="action-buttons">
+        <button id="preview-article" class="btn btn-secondary">Preview Article</button>
+        <button id="send-page" class="btn btn-primary">Send to Kindle</button>
+      </div>
+    </div>
+
+    <div id="preview-section" class="section hidden">
+      <div class="preview-header">
+        <h2>Article Preview</h2>
+        <button id="close-preview" class="btn-close" title="Close Preview">✕</button>
+      </div>
+      
+      <div id="preview-content" class="preview-content">
+        <div id="preview-loading" class="preview-loading hidden">
+          <div class="loading-spinner"></div>
+          <p>Extracting article content...</p>
+        </div>
+        
+        <div id="preview-article-content" class="preview-article hidden">
+          <div class="preview-meta">
+            <h3 id="preview-title">Article Title</h3>
+            <p id="preview-author" class="preview-author hidden">By <span></span></p>
+            <p id="preview-word-count" class="preview-stats">Word count: <span>0</span></p>
+          </div>
+          
+          <div id="preview-body" class="preview-body">
+            <!-- Article content will be inserted here -->
+          </div>
+        </div>
+        
+        <div id="preview-error" class="preview-error hidden">
+          <p>Failed to extract article content. Please try again.</p>
+        </div>
+      </div>
     </div>
 
     <div id="status-section" class="section">
