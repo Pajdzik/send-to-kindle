@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx vitest run:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npm outdated)"
     ],
     "deny": []
   }
