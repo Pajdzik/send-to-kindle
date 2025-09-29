@@ -237,7 +237,7 @@ class PopupManager {
       }
       
       this.displayPreviewContent(this.cachedPageContent);
-    } catch (error) {
+    } catch (_error) {
       this.showPreviewError();
     }
   }
