@@ -1,23 +1,142 @@
 // Popup script for the browser extension
+// Standalone version for Firefox compatibility
 
-import { createBrowserAPI, TypedStorage } from '../utils/browser-api.js';
-import type { PageContent } from '../utils/content-script.js';
-import {
-  DOMUtils,
-  ContentUtils,
-  PageInfoService,
-  WorkerService,
-  ConfigurationService,
-  type StatusType,
-} from '../utils/popup-script.js';
+// Firefox compatibility - use browser API if chrome API is not available
+const popupBrowserAPI = (() => {
+  if (typeof chrome !== 'undefined') return chrome;
+  if (typeof (globalThis as any).browser !== 'undefined') return (globalThis as any).browser;
+  throw new Error('No browser extension API found');
+})();
+
+interface ExtensionConfig {
+  readonly kindleEmail: string;
+  readonly workerUrl: string;
+}
+
+interface PageContent {
+  title: string;
+  content: string;
+  url: string;
+  author?: string | undefined;
+}
+
+type StatusType = 'success' | 'error' | 'info';
+
+class ElementNotFoundError extends Error {
+  constructor(elementId: string) {
+    super(`Required element not found: ${elementId}`);
+    this.name = 'ElementNotFoundError';
+  }
+}
+
+class ElementTypeError extends Error {
+  constructor(elementId: string, expectedType: string) {
+    super(`Element ${elementId} is not of expected type: ${expectedType}`);
+    this.name = 'ElementTypeError';
+  }
+}
+
+class ExtensionError extends Error {
+  constructor(
+    message: string,
+    public override readonly cause?: Error
+  ) {
+    super(message);
+    this.name = 'ExtensionError';
+  }
+}
+
+/**
+ * DOM element utilities with type safety
+ */
+class DOMUtils {
+  static getElement<T extends HTMLElement>(
+    id: string,
+    expectedType: new () => T
+  ): T {
+    const element = document.getElementById(id);
+    if (!element) {
+      throw new ElementNotFoundError(id);
+    }
+    if (!(element instanceof expectedType)) {
+      throw new ElementTypeError(id, expectedType.name);
+    }
+    return element;
+  }
+}
+
+/**
+ * Validation utilities
+ */
+class ValidationUtils {
+  private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  static isValidEmail(email: string): boolean {
+    return this.EMAIL_REGEX.test(email);
+  }
+
+  static isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  static validateConfig(config: Partial<ExtensionConfig>): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+
+    if (!config.kindleEmail) {
+      errors.push('Kindle email is required');
+    } else if (!this.isValidEmail(config.kindleEmail)) {
+      errors.push('Please enter a valid email address');
+    }
+
+    if (!config.workerUrl) {
+      errors.push('Worker URL is required');
+    } else if (!this.isValidUrl(config.workerUrl)) {
+      errors.push('Please enter a valid worker URL');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  }
+}
+
+/**
+ * Content processing utilities
+ */
+class ContentUtils {
+  static calculateWordCount(htmlContent: string): number {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+    const words = textContent.trim().split(/\s+/).filter(word => word.length > 0);
+    
+    return words.length;
+  }
+
+  static sanitizeContent(htmlContent: string): string {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    
+    const elementsToRemove = tempDiv.querySelectorAll('script, style, iframe, object, embed');
+    for (const element of Array.from(elementsToRemove)) {
+      element.remove();
+    }
+    
+    return tempDiv.innerHTML;
+  }
+}
 
 class PopupManager {
-  private readonly api = createBrowserAPI();
-  private readonly storage = new TypedStorage(this.api);
-  private readonly configService = new ConfigurationService(this.storage);
-  private readonly pageInfoService = new PageInfoService();
-  private readonly workerService = new WorkerService();
-
   private kindleEmailInput!: HTMLInputElement;
   private workerUrlInput!: HTMLInputElement;
   private saveConfigBtn!: HTMLButtonElement;
@@ -39,7 +158,6 @@ class PopupManager {
   private previewBody!: HTMLDivElement;
   
   private cachedPageContent: PageContent | null = null;
-
 
   async init(): Promise<void> {
     this.initializeElements();
@@ -80,15 +198,18 @@ class PopupManager {
   private async loadConfiguration(): Promise<void> {
     try {
       console.log('Loading configuration...');
-      const config = await this.configService.loadConfiguration();
-      console.log('Loaded configuration:', config);
+      const result = await popupBrowserAPI.storage.sync.get([
+        'kindleEmail',
+        'workerUrl',
+      ]);
+      console.log('Loaded configuration:', result);
 
-      if (config.kindleEmail) {
-        this.kindleEmailInput.value = config.kindleEmail;
+      if (result['kindleEmail']) {
+        this.kindleEmailInput.value = result['kindleEmail'];
       }
 
-      if (config.workerUrl) {
-        this.workerUrlInput.value = config.workerUrl;
+      if (result['workerUrl']) {
+        this.workerUrlInput.value = result['workerUrl'];
       }
 
       this.updateSendButtonState();
@@ -105,6 +226,13 @@ class PopupManager {
 
     console.log('Validating inputs:', { kindleEmail, workerUrl });
 
+    const validation = ValidationUtils.validateConfig({ kindleEmail, workerUrl });
+    
+    if (!validation.isValid) {
+      this.showStatus(`Invalid configuration: ${validation.errors.join(', ')}`, 'error');
+      return;
+    }
+
     // Update button to show saving state
     const originalText = this.saveConfigBtn.textContent;
     this.saveConfigBtn.disabled = true;
@@ -112,7 +240,10 @@ class PopupManager {
 
     try {
       console.log('Saving configuration:', { kindleEmail, workerUrl });
-      await this.configService.saveConfiguration({ kindleEmail, workerUrl });
+      await popupBrowserAPI.storage.sync.set({
+        kindleEmail,
+        workerUrl,
+      });
       console.log('Configuration saved successfully');
 
       // Show success state on button
@@ -140,11 +271,14 @@ class PopupManager {
 
   private async loadCurrentPageInfo(): Promise<void> {
     try {
-      const pageInfo = await this.pageInfoService.getCurrentPageInfo();
+      const [tab] = await popupBrowserAPI.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       
-      if (pageInfo) {
-        this.pageTitleSpan.textContent = pageInfo.title;
-        this.pageUrlSpan.textContent = pageInfo.url;
+      if (tab?.title && tab?.url) {
+        this.pageTitleSpan.textContent = tab.title;
+        this.pageUrlSpan.textContent = tab.url;
       } else {
         this.pageTitleSpan.textContent = 'Unable to get page info';
         this.pageUrlSpan.textContent = 'No active tab';
@@ -157,7 +291,7 @@ class PopupManager {
   }
 
   private async sendCurrentPage(): Promise<void> {
-    const config = await this.configService.getValidConfiguration();
+    const config = await this.getValidConfiguration();
 
     if (!config) {
       this.showStatus(
@@ -175,15 +309,13 @@ class PopupManager {
       let pageContent = this.cachedPageContent;
       
       if (!pageContent) {
-        // Extract content from the page
-        pageContent = await this.pageInfoService.extractPageContent();
+        pageContent = await this.extractPageContent();
         this.cachedPageContent = pageContent;
       }
 
       this.showStatus('Sending to Kindle...', 'info');
 
-      // Send to worker
-      await this.workerService.sendToWorker(config, pageContent);
+      await this.sendToWorker(config, pageContent);
 
       this.showStatus('Successfully sent to Kindle!', 'success');
     } catch (error) {
@@ -197,16 +329,12 @@ class PopupManager {
   }
 
   private async showPreview(): Promise<void> {
-    // Show preview section
     this.previewSection.classList.remove('hidden');
-    
-    // Show loading state
     this.showPreviewLoading();
     
     try {
-      // Extract content if not cached
       if (!this.cachedPageContent) {
-        this.cachedPageContent = await this.pageInfoService.extractPageContent();
+        this.cachedPageContent = await this.extractPageContent();
       }
       
       this.displayPreviewContent(this.cachedPageContent);
@@ -220,6 +348,32 @@ class PopupManager {
     this.previewSection.classList.add('hidden');
   }
 
+  private async extractPageContent(): Promise<PageContent> {
+    const [tab] = await popupBrowserAPI.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (!tab?.id) {
+      throw new ExtensionError('No active tab found');
+    }
+
+    const response = await popupBrowserAPI.tabs.sendMessage(tab.id, {
+      action: 'extractContent',
+    }) as { success: boolean; content?: PageContent; error?: string };
+
+    if (!response.success) {
+      throw new ExtensionError(
+        response.error || 'Failed to extract page content'
+      );
+    }
+
+    if (!response.content) {
+      throw new ExtensionError('No content received from page extraction');
+    }
+
+    return response.content;
+  }
 
   private showPreviewLoading(): void {
     this.previewLoading.classList.remove('hidden');
@@ -234,17 +388,12 @@ class PopupManager {
   }
 
   private displayPreviewContent(content: PageContent): void {
-    // Hide loading and error states
     this.previewLoading.classList.add('hidden');
     this.previewError.classList.add('hidden');
-    
-    // Show article content
     this.previewArticleContent.classList.remove('hidden');
     
-    // Set title
     this.previewTitle.textContent = content.title;
     
-    // Set author if available
     if (content.author) {
       const authorSpan = this.previewAuthor.querySelector('span');
       if (authorSpan) {
@@ -255,17 +404,64 @@ class PopupManager {
       this.previewAuthor.classList.add('hidden');
     }
     
-    // Calculate and display word count
     const wordCount = ContentUtils.calculateWordCount(content.content);
     const wordCountSpan = this.previewWordCount.querySelector('span');
     if (wordCountSpan) {
       wordCountSpan.textContent = wordCount.toString();
     }
     
-    // Set content
     this.previewBody.innerHTML = ContentUtils.sanitizeContent(content.content);
   }
 
+  private async sendToWorker(config: ExtensionConfig, content: PageContent): Promise<void> {
+    const payload = {
+      url: content.url,
+      kindleEmail: config.kindleEmail,
+      subject: `Kindle: ${content.title}`,
+      fromEmail: 'extension@sendtokindle.com',
+    };
+
+    const response = await fetch(config.workerUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: 'Network error' }));
+      
+      throw new Error(
+        errorData.error || `HTTP ${response.status}: ${response.statusText}`
+      );
+    }
+
+    await response.json();
+  }
+
+  private async getValidConfiguration(): Promise<ExtensionConfig | null> {
+    try {
+      const result = await popupBrowserAPI.storage.sync.get([
+        'kindleEmail',
+        'workerUrl',
+      ]);
+
+      if (result['kindleEmail'] && result['workerUrl']) {
+        return {
+          kindleEmail: result['kindleEmail'],
+          workerUrl: result['workerUrl'],
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to get configuration:', error);
+      return null;
+    }
+  }
 
   private updateSendButtonState(): void {
     const hasEmail = this.kindleEmailInput.value.trim().length > 0;
@@ -282,7 +478,6 @@ class PopupManager {
     this.statusMessage.className = `status ${type}`;
     this.statusMessage.classList.remove('hidden');
 
-    // Auto-hide success and info messages after 5 seconds, errors stay visible
     if (type === 'success') {
       setTimeout(() => {
         this.statusMessage.classList.add('hidden');
@@ -292,9 +487,7 @@ class PopupManager {
         this.statusMessage.classList.add('hidden');
       }, 3000);
     }
-    // Error messages stay visible until manually dismissed or overwritten
   }
-
 }
 
 // Initialize popup when DOM is loaded
