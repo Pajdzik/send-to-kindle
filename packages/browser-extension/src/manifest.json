@@ -3,6 +3,11 @@
   "name": "Send to Kindle",
   "version": "1.0.0",
   "description": "Send web pages to your Kindle via email",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "send-to-kindle@example.com"
+    }
+  },
   "permissions": [
     "activeTab",
     "storage",
