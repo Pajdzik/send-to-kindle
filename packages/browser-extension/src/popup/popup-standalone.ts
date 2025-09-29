@@ -414,32 +414,21 @@ class PopupManager {
   }
 
   private async sendToWorker(config: ExtensionConfig, content: PageContent): Promise<void> {
-    const payload = {
-      url: content.url,
-      kindleEmail: config.kindleEmail,
-      subject: `Kindle: ${content.title}`,
-      fromEmail: 'extension@sendtokindle.com',
-    };
+    // Send message to background script instead of making direct fetch
+    const response = await popupBrowserAPI.runtime.sendMessage({
+      action: 'sendToKindle',
+      data: {
+        url: content.url,
+        kindleEmail: config.kindleEmail,
+        workerUrl: config.workerUrl,
+        title: content.title,
+        author: content.author,
+      }
+    }) as { success: boolean; result?: any; error?: string };
 
-    const response = await fetch(config.workerUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ error: 'Network error' }));
-      
-      throw new Error(
-        errorData.error || `HTTP ${response.status}: ${response.statusText}`
-      );
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to send to background script');
     }
-
-    await response.json();
   }
 
   private async getValidConfiguration(): Promise<ExtensionConfig | null> {
