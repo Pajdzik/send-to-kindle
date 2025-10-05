@@ -10,6 +10,7 @@ import type { WorkerPayload } from './background-script.js';
 export interface ExtensionConfig {
   readonly kindleEmail: string;
   readonly workerUrl: string;
+  readonly fromEmail: string;
 }
 
 /**
@@ -127,6 +128,12 @@ export class ValidationUtils {
       errors.push('Please enter a valid worker URL');
     }
 
+    if (!config.fromEmail) {
+      errors.push('From email is required');
+    } else if (!this.isValidEmail(config.fromEmail)) {
+      errors.push('Please enter a valid from email address');
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -233,8 +240,6 @@ export class PageInfoService {
  * Worker communication service
  */
 export class WorkerService {
-  private static readonly DEFAULT_FROM_EMAIL = 'extension@sendtokindle.com';
-
   /**
    * Send content to worker API
    */
@@ -243,7 +248,7 @@ export class WorkerService {
       url: content.url,
       kindleEmail: config.kindleEmail,
       subject: `Kindle: ${content.title}`,
-      fromEmail: WorkerService.DEFAULT_FROM_EMAIL,
+      fromEmail: config.fromEmail,
     };
 
     const response = await fetch(config.workerUrl, {
@@ -283,7 +288,7 @@ export class ConfigurationService {
    */
   async loadConfiguration(): Promise<Partial<StorageConfig>> {
     try {
-      return await this.storage.get(['kindleEmail', 'workerUrl']);
+      return await this.storage.get(['kindleEmail', 'workerUrl', 'fromEmail']);
     } catch (error) {
       console.error('Failed to load configuration:', error);
       throw new ExtensionError('Failed to load configuration', error as Error);
@@ -313,11 +318,12 @@ export class ConfigurationService {
    */
   async getValidConfiguration(): Promise<ExtensionConfig | null> {
     const config = await this.loadConfiguration();
-    
-    if (config.kindleEmail && config.workerUrl) {
+
+    if (config.kindleEmail && config.workerUrl && config.fromEmail) {
       return {
         kindleEmail: config.kindleEmail,
         workerUrl: config.workerUrl,
+        fromEmail: config.fromEmail,
       };
     }
 

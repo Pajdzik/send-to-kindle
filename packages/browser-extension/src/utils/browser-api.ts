@@ -71,6 +71,7 @@ export type MessageListener<T = unknown, R = unknown> = (
 export interface StorageConfig {
   kindleEmail?: string;
   workerUrl?: string;
+  fromEmail?: string;
 }
 
 /**

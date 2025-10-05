@@ -20,6 +20,7 @@ class PopupManager {
 
   private kindleEmailInput!: HTMLInputElement;
   private workerUrlInput!: HTMLInputElement;
+  private fromEmailInput!: HTMLInputElement;
   private saveConfigBtn!: HTMLButtonElement;
   private sendPageBtn!: HTMLButtonElement;
   private previewArticleBtn!: HTMLButtonElement;
@@ -51,6 +52,7 @@ class PopupManager {
   private initializeElements(): void {
     this.kindleEmailInput = DOMUtils.getElement('kindle-email', HTMLInputElement);
     this.workerUrlInput = DOMUtils.getElement('worker-url', HTMLInputElement);
+    this.fromEmailInput = DOMUtils.getElement('from-email', HTMLInputElement);
     this.saveConfigBtn = DOMUtils.getElement('save-config', HTMLButtonElement);
     this.sendPageBtn = DOMUtils.getElement('send-page', HTMLButtonElement);
     this.previewArticleBtn = DOMUtils.getElement('preview-article', HTMLButtonElement);
@@ -91,6 +93,10 @@ class PopupManager {
         this.workerUrlInput.value = config.workerUrl;
       }
 
+      if (config.fromEmail) {
+        this.fromEmailInput.value = config.fromEmail;
+      }
+
       this.updateSendButtonState();
     } catch (error) {
       console.error('Failed to load configuration:', error);
@@ -102,8 +108,9 @@ class PopupManager {
   private async saveConfiguration(): Promise<void> {
     const kindleEmail = this.kindleEmailInput.value.trim();
     const workerUrl = this.workerUrlInput.value.trim();
+    const fromEmail = this.fromEmailInput.value.trim();
 
-    console.log('Validating inputs:', { kindleEmail, workerUrl });
+    console.log('Validating inputs:', { kindleEmail, workerUrl, fromEmail });
 
     // Update button to show saving state
     const originalText = this.saveConfigBtn.textContent;
@@ -111,8 +118,8 @@ class PopupManager {
     this.saveConfigBtn.textContent = 'Saving...';
 
     try {
-      console.log('Saving configuration:', { kindleEmail, workerUrl });
-      await this.configService.saveConfiguration({ kindleEmail, workerUrl });
+      console.log('Saving configuration:', { kindleEmail, workerUrl, fromEmail });
+      await this.configService.saveConfiguration({ kindleEmail, workerUrl, fromEmail });
       console.log('Configuration saved successfully');
 
       // Show success state on button
@@ -270,8 +277,9 @@ class PopupManager {
   private updateSendButtonState(): void {
     const hasEmail = this.kindleEmailInput.value.trim().length > 0;
     const hasWorkerUrl = this.workerUrlInput.value.trim().length > 0;
+    const hasFromEmail = this.fromEmailInput.value.trim().length > 0;
 
-    this.sendPageBtn.disabled = !(hasEmail && hasWorkerUrl);
+    this.sendPageBtn.disabled = !(hasEmail && hasWorkerUrl && hasFromEmail);
   }
 
   private showStatus(
