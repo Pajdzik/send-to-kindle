@@ -9,6 +9,7 @@ export interface SendToKindleRequest {
   readonly url: string;
   readonly kindleEmail: string;
   readonly workerUrl: string;
+  readonly fromEmail: string;
   readonly title?: string | undefined;
   readonly author?: string | undefined;
 }
@@ -76,8 +77,6 @@ export class InstallationManager {
  * Send to Kindle service
  */
 export class SendToKindleService {
-  private static readonly DEFAULT_FROM_EMAIL = 'extension@sendtokindle.com';
-
   /**
    * Send content to Kindle via worker API
    */
@@ -86,7 +85,7 @@ export class SendToKindleService {
       url: request.url,
       kindleEmail: request.kindleEmail,
       subject: request.title ? `Kindle: ${request.title}` : `Kindle: ${request.url}`,
-      fromEmail: SendToKindleService.DEFAULT_FROM_EMAIL,
+      fromEmail: request.fromEmail,
     };
 
     const response = await fetch(request.workerUrl, {
@@ -162,9 +161,9 @@ export class ContextMenuManager {
 
     try {
       // Get configuration
-      const config = await this.storage.get(['kindleEmail', 'workerUrl']);
+      const config = await this.storage.get(['kindleEmail', 'workerUrl', 'fromEmail']);
 
-      if (!config.kindleEmail || !config.workerUrl) {
+      if (!config.kindleEmail || !config.workerUrl || !config.fromEmail) {
         // Open popup for configuration
         this.api.action?.openPopup();
         return;
@@ -180,6 +179,7 @@ export class ContextMenuManager {
           url: response.content.url,
           kindleEmail: config.kindleEmail,
           workerUrl: config.workerUrl,
+          fromEmail: config.fromEmail,
           title: response.content.title,
           author: response.content.author,
         });
