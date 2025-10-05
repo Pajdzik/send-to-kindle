@@ -11,6 +11,7 @@ const popupBrowserAPI = (() => {
 interface ExtensionConfig {
   readonly kindleEmail: string;
   readonly workerUrl: string;
+  readonly fromEmail: string;
 }
 
 interface PageContent {
@@ -102,6 +103,12 @@ class ValidationUtils {
       errors.push('Please enter a valid worker URL');
     }
 
+    if (!config.fromEmail) {
+      errors.push('From email is required');
+    } else if (!this.isValidEmail(config.fromEmail)) {
+      errors.push('Please enter a valid from email address');
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -139,6 +146,7 @@ class ContentUtils {
 class PopupManager {
   private kindleEmailInput!: HTMLInputElement;
   private workerUrlInput!: HTMLInputElement;
+  private fromEmailInput!: HTMLInputElement;
   private saveConfigBtn!: HTMLButtonElement;
   private sendPageBtn!: HTMLButtonElement;
   private previewArticleBtn!: HTMLButtonElement;
@@ -169,6 +177,7 @@ class PopupManager {
   private initializeElements(): void {
     this.kindleEmailInput = DOMUtils.getElement('kindle-email', HTMLInputElement);
     this.workerUrlInput = DOMUtils.getElement('worker-url', HTMLInputElement);
+    this.fromEmailInput = DOMUtils.getElement('from-email', HTMLInputElement);
     this.saveConfigBtn = DOMUtils.getElement('save-config', HTMLButtonElement);
     this.sendPageBtn = DOMUtils.getElement('send-page', HTMLButtonElement);
     this.previewArticleBtn = DOMUtils.getElement('preview-article', HTMLButtonElement);
@@ -201,6 +210,7 @@ class PopupManager {
       const result = await popupBrowserAPI.storage.sync.get([
         'kindleEmail',
         'workerUrl',
+        'fromEmail',
       ]);
       console.log('Loaded configuration:', result);
 
@@ -210,6 +220,10 @@ class PopupManager {
 
       if (result['workerUrl']) {
         this.workerUrlInput.value = result['workerUrl'];
+      }
+
+      if (result['fromEmail']) {
+        this.fromEmailInput.value = result['fromEmail'];
       }
 
       this.updateSendButtonState();
@@ -223,11 +237,12 @@ class PopupManager {
   private async saveConfiguration(): Promise<void> {
     const kindleEmail = this.kindleEmailInput.value.trim();
     const workerUrl = this.workerUrlInput.value.trim();
+    const fromEmail = this.fromEmailInput.value.trim();
 
-    console.log('Validating inputs:', { kindleEmail, workerUrl });
+    console.log('Validating inputs:', { kindleEmail, workerUrl, fromEmail });
 
-    const validation = ValidationUtils.validateConfig({ kindleEmail, workerUrl });
-    
+    const validation = ValidationUtils.validateConfig({ kindleEmail, workerUrl, fromEmail });
+
     if (!validation.isValid) {
       this.showStatus(`Invalid configuration: ${validation.errors.join(', ')}`, 'error');
       return;
@@ -239,10 +254,11 @@ class PopupManager {
     this.saveConfigBtn.textContent = 'Saving...';
 
     try {
-      console.log('Saving configuration:', { kindleEmail, workerUrl });
+      console.log('Saving configuration:', { kindleEmail, workerUrl, fromEmail });
       await popupBrowserAPI.storage.sync.set({
         kindleEmail,
         workerUrl,
+        fromEmail,
       });
       console.log('Configuration saved successfully');
 
@@ -421,6 +437,7 @@ class PopupManager {
         url: content.url,
         kindleEmail: config.kindleEmail,
         workerUrl: config.workerUrl,
+        fromEmail: config.fromEmail,
         title: content.title,
         author: content.author,
       }
@@ -436,12 +453,14 @@ class PopupManager {
       const result = await popupBrowserAPI.storage.sync.get([
         'kindleEmail',
         'workerUrl',
+        'fromEmail',
       ]);
 
-      if (result['kindleEmail'] && result['workerUrl']) {
+      if (result['kindleEmail'] && result['workerUrl'] && result['fromEmail']) {
         return {
           kindleEmail: result['kindleEmail'],
           workerUrl: result['workerUrl'],
+          fromEmail: result['fromEmail'],
         };
       }
 
@@ -455,8 +474,9 @@ class PopupManager {
   private updateSendButtonState(): void {
     const hasEmail = this.kindleEmailInput.value.trim().length > 0;
     const hasWorkerUrl = this.workerUrlInput.value.trim().length > 0;
+    const hasFromEmail = this.fromEmailInput.value.trim().length > 0;
 
-    this.sendPageBtn.disabled = !(hasEmail && hasWorkerUrl);
+    this.sendPageBtn.disabled = !(hasEmail && hasWorkerUrl && hasFromEmail);
   }
 
   private showStatus(
