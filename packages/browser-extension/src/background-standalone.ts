@@ -12,6 +12,7 @@ interface SendToKindleRequest {
   readonly url: string;
   readonly kindleEmail: string;
   readonly workerUrl: string;
+  readonly fromEmail: string;
   readonly title?: string | undefined;
   readonly author?: string | undefined;
 }
@@ -76,7 +77,7 @@ async function handleSendToKindle(data: SendToKindleRequest): Promise<any> {
     url: data.url,
     kindleEmail: data.kindleEmail,
     subject: data.title ? `Kindle: ${data.title}` : `Kindle: ${data.url}`,
-    fromEmail: 'extension@sendtokindle.com',
+    fromEmail: data.fromEmail,
   };
 
   const response = await fetch(data.workerUrl, {
@@ -111,9 +112,10 @@ backgroundBrowserAPI.contextMenus?.onClicked.addListener(
       const config = await backgroundBrowserAPI.storage.sync.get([
         'kindleEmail',
         'workerUrl',
+        'fromEmail',
       ]);
 
-      if (!config['kindleEmail'] || !config['workerUrl']) {
+      if (!config['kindleEmail'] || !config['workerUrl'] || !config['fromEmail']) {
         // Open popup for configuration
         backgroundBrowserAPI.action?.openPopup();
         return;
@@ -129,6 +131,7 @@ backgroundBrowserAPI.contextMenus?.onClicked.addListener(
           url: response.content.url,
           kindleEmail: config['kindleEmail'],
           workerUrl: config['workerUrl'],
+          fromEmail: config['fromEmail'],
           title: response.content.title,
           author: response.content.author,
         });
