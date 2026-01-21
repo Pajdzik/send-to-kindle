@@ -35,6 +35,6 @@
   "dependencies": {
     "@types/chrome": "^0.1.6",
     "resend": "^6.0.2",
-    "wrangler": "^4.34.0"
+    "wrangler": "^4.59.1"
   }
 }
